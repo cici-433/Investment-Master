@@ -510,9 +510,7 @@
             document.getElementById('metric-pe').textContent = peData.trailing_pe ? peData.trailing_pe.toFixed(2) : '--';
             document.getElementById('metric-pb').textContent = peData.price_to_book ? peData.price_to_book.toFixed(2) : '--';
             document.getElementById('metric-roe').textContent = peData.return_on_equity ? (peData.return_on_equity * 100).toFixed(1) + '%' : '--';
-            // Dividend yield is not in pe_data, checking if I included it in API... 
-            // I might need to add dividendYield to pe_data in backend or fetch it separately.
-            // For now, leave as -- if not available.
+            document.getElementById('metric-div').textContent = peData.dividend_yield ? (peData.dividend_yield * 100).toFixed(2) + '%' : '--%';
 
             // Update PB-ROE Card
             const pbData = data.pb_data || {};

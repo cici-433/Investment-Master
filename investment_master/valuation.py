@@ -36,12 +36,57 @@ class Valuator:
                 "sector": info.get('sector', 'Unknown'),
                 "price_to_book": info.get('priceToBook'),
                 "return_on_equity": info.get('returnOnEquity'),
-                "book_value": info.get('bookValue')
+                "book_value": info.get('bookValue'),
+                "dividend_yield": self._get_best_dividend_yield(info)
             }
             return pe_data
         except Exception:
             pass
         return None
+
+    def _get_best_dividend_yield(self, info):
+        """
+        尝试获取最准确的股息率。
+        A股数据源在 yfinance 中经常不一致，有的只有 trailingAnnualDividendRate，有的只有 dividendYield。
+        策略：计算 TTM 股息率和 Forward 股息率，取两者中较大且合理的值。
+        """
+        try:
+            price = info.get('currentPrice') or info.get('previousClose')
+            if not price:
+                return None
+                
+            # 1. 计算 TTM 股息率 (基于过去一年实际支付)
+            t_rate = info.get('trailingAnnualDividendRate')
+            t_yield = 0.0
+            if t_rate:
+                t_yield = t_rate / price
+                
+            # 2. 获取 Forward/Indicated 股息率 (数据源直接提供)
+            d_yield_raw = info.get('dividendYield')
+            d_yield = 0.0
+            if d_yield_raw:
+                # 处理百分比格式 (e.g. 7.92 -> 0.0792)
+                if d_yield_raw > 1:
+                    d_yield = d_yield_raw / 100.0
+                else:
+                    d_yield = d_yield_raw
+            
+            # 3. 决策逻辑
+            # 取最大值，通常能覆盖数据缺失的情况 (例如 600036 TTM=0 但 Yield=7.9%; 002027 TTM=5.2% 但 Yield=2%)
+            best_yield = max(t_yield, d_yield)
+            
+            return best_yield if best_yield > 0 else None
+            
+        except Exception:
+            return None
+
+    def _process_dividend_yield(self, val):
+        # Deprecated, replaced by _get_best_dividend_yield
+        if val is None:
+            return None
+        if val > 1:
+            return val / 100.0
+        return val
 
     def calculate_pb_roe(self, ticker, info=None):
         """
