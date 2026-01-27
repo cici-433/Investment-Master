@@ -981,7 +981,7 @@
             // Render each group
             groups.forEach(group => {
                 const groupHoldings = holdingsByGroup[group.id] || [];
-                const groupHtml = renderGroup(group, groupHoldings);
+                const groupHtml = renderGroup(group, groupHoldings, totalAssets);
                 container.insertAdjacentHTML('beforeend', groupHtml);
 
                 // Initialize Sortable for this group's tbody
@@ -1034,14 +1034,19 @@
         }
     }
 
-    function renderGroup(group, holdings) {
+    function renderGroup(group, holdings, totalAssets) {
         const isDefault = group.id === 'default';
+
+        // Calculate Group Stats
+        const groupTotal = holdings.reduce((sum, h) => sum + h.market_value, 0);
+        const groupWeight = totalAssets > 0 ? (groupTotal / totalAssets * 100).toFixed(2) : '0.00';
 
         let rowsHtml = '';
         holdings.forEach(h => {
             const isUp = h.gain >= 0;
             const colorClass = isUp ? 'text-red-600' : 'text-green-600';
             const sign = isUp ? '+' : '';
+            const weight = totalAssets > 0 ? (h.market_value / totalAssets * 100).toFixed(2) : '0.00';
 
             // Handle Cash display
             const isCash = h.ticker === 'CASH';
@@ -1069,6 +1074,9 @@
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-right font-medium text-slate-900">
                         ${h.market_value.toLocaleString()}
                     </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-slate-600 font-medium">
+                        ${weight}%
+                    </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-right ${colorClass} font-bold">
                         ${sign}${h.gain.toLocaleString()}
                         <div class="text-xs font-normal mt-0.5">${sign}${h.gain_percent}%</div>
@@ -1089,7 +1097,7 @@
         });
 
         if (holdings.length === 0) {
-            rowsHtml = `<tr><td colspan="7" class="text-center py-8 text-slate-400 text-sm">暂无持仓，拖拽至此或添加股票</td></tr>`;
+            rowsHtml = `<tr><td colspan="8" class="text-center py-8 text-slate-400 text-sm">暂无持仓，拖拽至此或添加股票</td></tr>`;
         }
 
         return `
@@ -1097,6 +1105,7 @@
                 <div class="px-6 py-4 bg-slate-50 border-b border-slate-200 flex justify-between items-center group-header">
                     <div class="flex items-center">
                         <h3 class="font-bold text-slate-700" id="group-name-${group.id}">${group.name}</h3>
+                        <span class="ml-3 text-xs font-medium px-2 py-1 bg-slate-100 text-slate-600 rounded-full">占比: ${groupWeight}%</span>
                         ${!isDefault ? `
                             <button onclick="editGroupName('${group.id}', '${group.name}')" class="ml-2 text-slate-400 hover:text-blue-600 opacity-0 group-actions transition-opacity">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
@@ -1116,6 +1125,7 @@
                             <th class="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">持仓</th>
                             <th class="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">现价/成本</th>
                             <th class="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">市值</th>
+                            <th class="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">占比</th>
                             <th class="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">盈亏</th>
                             <th class="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">涨跌</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">备注</th>
