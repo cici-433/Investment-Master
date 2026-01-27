@@ -373,8 +373,10 @@ class Valuator:
 
     def calculate_pr(self, ticker, info=None):
         """
-        市赚率 (PR) 估值法
-        PR = N * PE / (ROE * 100)
+        市赚率 (PR) 估值法 - 包含三个变种公式
+        1. 标准公式: PR = PE / (ROE * 100)
+        2. 修正公式 (含分红): PR = (PE * N) / (ROE * 100)
+        3. PB推导公式: PR = PB / (ROE * ROE * 100)
         """
         try:
             if not info:
@@ -384,22 +386,21 @@ class Valuator:
             # 1. 获取基础数据
             pe = info.get('trailingPE')
             roe = info.get('returnOnEquity') # 0.15
+            pb = info.get('priceToBook')
             dpr = info.get('payoutRatio')    # 0.40
             
             if not (pe and roe):
                 return {"error": "缺少必要数据 (PE/ROE)"}
             
             # ROE 必须转换为百分比数值参与计算 (例如 15% -> 15)
-            # 这里的公式 PR = PE / ROE，通常 ROE 是指 15 这种整数概念，还是 0.15？
-            # 根据 "低于1低估" 判断：
-            # 如果 PE=15, ROE=15%(0.15).
-            # 方式A: 15 / 0.15 = 100 (太大)
-            # 方式B: 15 / 15 = 1.0 (合理)
-            # 所以 ROE 应该取百分比的数值 (15)。
             roe_val = roe * 100
             
-            # 2. 计算修正系数 N
-            # 默认 N=1 (如果缺少分红数据，暂时按标准处理或保守处理？这里按 N=1 处理但提示)
+            # --- 公式 1: 标准市赚率 ---
+            # PR1 = PE / ROE
+            pr1 = pe / roe_val
+            
+            # --- 公式 2: 修正市赚率 (含分红) ---
+            # 默认 N=1 
             n = 1.0
             dpr_val = 0
             
@@ -413,27 +414,44 @@ class Valuator:
                     # 25% < dpr < 50%
                     # n = 0.5 / dpr
                     n = 0.50 / dpr_val
-            else:
-                # 缺少分红数据，保守起见或者提示
-                n = 1.0 # 假设
             
-            # 3. 计算 PR
-            # PR = N * PE / ROE
-            pr = n * (pe / roe_val)
+            # PR2 = N * PE / ROE
+            pr2 = n * (pe / roe_val)
             
-            # 4. 估值结论
+            # --- 公式 3: PB 推导市赚率 ---
+            # PR3 = PB / (ROE^2 * 100)
+            # 推导: 若 PR=1, 则 PE=100*ROE. 又 PB=PE*ROE, 故 PB=100*ROE^2.
+            # 这里的 ROE 是小数 (0.15), 还是整数 (15)?
+            # 之前的公式是 PE / (ROE_val).
+            # PB = PE * ROE(小数).
+            # PR = PE / ROE_val = (PB/ROE_decimal) / (ROE_decimal * 100) = PB / (ROE_decimal^2 * 100)
+            # 或者 PR = PB / (ROE_val * ROE_decimal) ? 
+            # 让我们代入: ROE=0.15, ROE_val=15.
+            # PR = PB / (15 * 0.15) = PB / 2.25.
+            # 如果 PR=1, PB=2.25. (符合 ROE=15% 时 PB=2.25 合理)
+            pr3 = 0
+            if pb:
+                pr3 = pb / (roe_val * roe)
+            
+            # 4. 估值结论 (以 PR2 修正值为准)
             result_type = "合理/持有"
-            if pr < 0.6:
+            main_pr = pr2
+            
+            if main_pr < 0.6:
                 result_type = "严重低估 (买入)"
-            elif pr > 1.0:
+            elif main_pr > 1.0:
                 result_type = "高估 (卖出)"
             
             return {
                 "pe": pe,
                 "roe": roe,
+                "pb": pb,
                 "dpr": dpr,
                 "n_factor": n,
-                "pr_value": round(pr, 3),
+                "pr_value": round(main_pr, 3), # 保持兼容
+                "pr_1": round(pr1, 3),
+                "pr_2": round(pr2, 3),
+                "pr_3": round(pr3, 3),
                 "result_type": result_type
             }
             

@@ -40,6 +40,11 @@
                     el.className = "text-slate-500 hover:text-slate-900 px-3 py-2 rounded-md text-sm font-medium transition-colors hover:bg-slate-50 cursor-pointer";
                 }
             });
+
+            // Trigger specific view logic
+            if (tabId === 'analysis') {
+                loadMarketData();
+            }
         }
     </script>
 </head>
@@ -198,9 +203,25 @@
                                 <span class="text-slate-500">修正系数 N (分红率>50%)</span>
                                 <span class="font-mono" id="pr-n">--</span>
                             </div>
-                            <div class="flex justify-between text-sm">
-                                <span class="text-slate-500">计算公式</span>
-                                <span class="font-mono text-xs" id="pr-formula">--</span>
+
+                            <!-- 三个公式展示 -->
+                            <div class="mt-4 pt-4 border-t border-slate-100">
+                                <p class="text-xs font-bold text-slate-700 mb-2">三个参考公式:</p>
+                                <div class="space-y-2 text-xs">
+                                    <div class="flex justify-between items-center">
+                                        <span class="text-slate-500" title="PR = PE / (ROE*100)">1. 标准 (PE/ROE)</span>
+                                        <span class="font-mono font-bold" id="pr-1-val">--</span>
+                                    </div>
+                                    <div class="flex justify-between items-center bg-blue-50 p-1 rounded">
+                                        <span class="text-slate-500" title="PR = (PE*N) / (ROE*100)">2. 修正 (含分红)</span>
+                                        <span class="font-mono font-bold text-blue-600" id="pr-2-val">--</span>
+                                    </div>
+                                    <div class="flex justify-between items-center">
+                                        <span class="text-slate-500" title="PR = PB / (ROE²*100)">3. PB推导
+                                            (PB/ROE²)</span>
+                                        <span class="font-mono font-bold" id="pr-3-val">--</span>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
@@ -553,64 +574,17 @@
                 <!-- Market Map (Placeholder) -->
                 <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
                     <h3 class="font-bold text-slate-800 mb-4">板块涨跌幅热力图</h3>
-                    <div
-                        class="aspect-video bg-slate-50 rounded-lg flex items-center justify-center border border-dashed border-slate-300">
-                        <div class="text-center">
-                            <svg class="mx-auto h-12 w-12 text-slate-400" fill="none" stroke="currentColor"
-                                viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z">
-                                </path>
-                            </svg>
-                            <p class="mt-2 text-sm text-slate-500">Charts.js 可视化区域</p>
-                        </div>
+                    <div class="aspect-video bg-white rounded-lg p-2 relative">
+                        <canvas id="sectorChart"></canvas>
                     </div>
                 </div>
 
                 <!-- Top Sectors -->
                 <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
                     <h3 class="font-bold text-slate-800 mb-4">领涨行业 (Top 5)</h3>
-                    <div class="space-y-4">
-                        <div class="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
-                            <div class="flex items-center">
-                                <span
-                                    class="w-8 h-8 rounded-full bg-red-100 text-red-600 flex items-center justify-center text-xs font-bold mr-3">1</span>
-                                <span class="font-medium text-slate-700">银行</span>
-                            </div>
-                            <div class="text-red-600 font-bold">+2.45%</div>
-                        </div>
-                        <div class="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
-                            <div class="flex items-center">
-                                <span
-                                    class="w-8 h-8 rounded-full bg-red-100 text-red-600 flex items-center justify-center text-xs font-bold mr-3">2</span>
-                                <span class="font-medium text-slate-700">家用电器</span>
-                            </div>
-                            <div class="text-red-600 font-bold">+1.8%</div>
-                        </div>
-                        <div class="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
-                            <div class="flex items-center">
-                                <span
-                                    class="w-8 h-8 rounded-full bg-red-100 text-red-600 flex items-center justify-center text-xs font-bold mr-3">3</span>
-                                <span class="font-medium text-slate-700">食品饮料</span>
-                            </div>
-                            <div class="text-red-600 font-bold">+1.2%</div>
-                        </div>
-                        <div class="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
-                            <div class="flex items-center">
-                                <span
-                                    class="w-8 h-8 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center text-xs font-bold mr-3">4</span>
-                                <span class="font-medium text-slate-700">煤炭</span>
-                            </div>
-                            <div class="text-red-500 font-bold">+0.8%</div>
-                        </div>
-                        <div class="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
-                            <div class="flex items-center">
-                                <span
-                                    class="w-8 h-8 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center text-xs font-bold mr-3">5</span>
-                                <span class="font-medium text-slate-700">公用事业</span>
-                            </div>
-                            <div class="text-red-500 font-bold">+0.5%</div>
-                        </div>
+                    <div class="space-y-4" id="top-sectors-list">
+                        <!-- Content will be loaded dynamically -->
+                        <div class="text-center text-slate-400 py-4">Loading...</div>
                     </div>
                 </div>
             </div>
@@ -700,7 +674,11 @@
             if (!prData.error && prData.pr_value) {
                 document.getElementById('pr-value').textContent = prData.pr_value.toFixed(2);
                 document.getElementById('pr-n').textContent = prData.n_factor.toFixed(1);
-                document.getElementById('pr-formula').textContent = `${prData.n_factor} * (${prData.pe.toFixed(1)} / ${(prData.roe * 100).toFixed(1)})`;
+
+                // Update 3 Formulas
+                if (prData.pr_1 !== undefined) document.getElementById('pr-1-val').textContent = prData.pr_1.toFixed(3);
+                if (prData.pr_2 !== undefined) document.getElementById('pr-2-val').textContent = prData.pr_2.toFixed(3);
+                if (prData.pr_3 !== undefined) document.getElementById('pr-3-val').textContent = prData.pr_3.toFixed(3);
 
                 let prBadge = "持有";
                 let prClass = "bg-gray-100 text-gray-800";
@@ -885,6 +863,114 @@
             console.error(e);
             logArea.innerHTML += `<p class="text-red-400">System Error: ${e.message}</p>`;
         }
+    }
+
+    let marketChart = null;
+
+    async function loadMarketData() {
+        try {
+            const response = await fetch('/api/market_status');
+            const data = await response.json();
+
+            if (data.sectors) {
+                renderSectorChart(data.sectors);
+                renderTopSectors(data.sectors);
+            }
+        } catch (e) {
+            console.error("Failed to load market data", e);
+        }
+    }
+
+    function renderTopSectors(sectors) {
+        const container = document.getElementById('top-sectors-list');
+        container.innerHTML = ''; // Clear existing
+
+        // Take top 5
+        const top5 = sectors.slice(0, 5);
+
+        top5.forEach((sector, index) => {
+            const rank = index + 1;
+            const isTop3 = rank <= 3;
+            const rankBg = isTop3 ? 'bg-red-100 text-red-600' : 'bg-slate-100 text-slate-600';
+            const changeColor = sector.change >= 0 ? 'text-red-600' : 'text-green-600';
+            const sign = sector.change > 0 ? '+' : '';
+
+            const item = `
+                <div class="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+                    <div class="flex items-center">
+                        <span class="w-8 h-8 rounded-full ${rankBg} flex items-center justify-center text-xs font-bold mr-3">${rank}</span>
+                        <span class="font-medium text-slate-700">${sector.name}</span>
+                    </div>
+                    <div class="${changeColor} font-bold">${sign}${sector.change}%</div>
+                </div>
+            `;
+            container.innerHTML += item;
+        });
+    }
+
+    function renderSectorChart(sectors) {
+        const ctx = document.getElementById('sectorChart').getContext('2d');
+
+        // Destroy existing chart if it exists
+        if (marketChart) {
+            marketChart.destroy();
+        }
+
+        // Prepare data
+        const labels = sectors.map(s => s.name);
+        const changes = sectors.map(s => s.change);
+        // A-share style: Red for positive (up), Green for negative (down)
+        const colors = changes.map(v => v >= 0 ? 'rgba(220, 38, 38, 0.8)' : 'rgba(22, 163, 74, 0.8)');
+        const borders = changes.map(v => v >= 0 ? 'rgba(220, 38, 38, 1)' : 'rgba(22, 163, 74, 1)');
+
+        marketChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: '涨跌幅 (%)',
+                    data: changes,
+                    backgroundColor: colors,
+                    borderColor: borders,
+                    borderWidth: 1,
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function (context) {
+                                return `涨跌幅: ${context.parsed.y > 0 ? '+' : ''}${context.parsed.y}%`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: {
+                            color: 'rgba(241, 245, 249, 1)'
+                        },
+                        ticks: {
+                            callback: function (value) {
+                                return value + '%';
+                            }
+                        }
+                    },
+                    x: {
+                        grid: {
+                            display: false
+                        }
+                    }
+                }
+            }
+        });
     }
 
     // Initial load

@@ -163,5 +163,35 @@ def run_selection():
         traceback.print_exc()
         return jsonify({"error": str(e)}), 500
 
+@app.route('/api/market_status')
+def market_status():
+    """
+    Returns simulated sector performance data for the heatmap
+    """
+    import random
+    
+    sectors = [
+        {"name": "银行", "change": 2.45, "heat": 0.8},
+        {"name": "家用电器", "change": 1.82, "heat": 0.7},
+        {"name": "食品饮料", "change": 1.25, "heat": 0.6},
+        {"name": "煤炭", "change": 0.85, "heat": 0.5},
+        {"name": "公用事业", "change": 0.52, "heat": 0.4},
+        {"name": "交通运输", "change": -0.15, "heat": -0.1},
+        {"name": "医药生物", "change": -0.45, "heat": -0.3},
+        {"name": "电子", "change": -0.88, "heat": -0.5},
+        {"name": "房地产", "change": -1.25, "heat": -0.7},
+        {"name": "计算机", "change": -2.10, "heat": -0.9}
+    ]
+    
+    # Optional: Randomize slightly for dynamic effect
+    for s in sectors:
+        noise = random.uniform(-0.2, 0.2)
+        s["change"] = round(s["change"] + noise, 2)
+    
+    # Sort by change descending
+    sectors.sort(key=lambda x: x["change"], reverse=True)
+    
+    return jsonify({"sectors": sectors})
+
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
