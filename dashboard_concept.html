@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Investment Master - 智能投资分析平台</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(229, 231, 235, 0.5);
+        }
+
+        .gradient-text {
+            background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+    </style>
+    <script>
+        function switchTab(tabId) {
+            // Hide all views
+            document.getElementById('view-valuation').classList.add('hidden');
+            document.getElementById('view-selection').classList.add('hidden');
+            document.getElementById('view-analysis').classList.add('hidden');
+
+            // Show selected view
+            document.getElementById('view-' + tabId).classList.remove('hidden');
+
+            // Reset nav styles
+            const navs = ['valuation', 'selection', 'analysis'];
+            navs.forEach(nav => {
+                const el = document.getElementById('nav-' + nav);
+                if (nav === tabId) {
+                    el.className = "bg-blue-50 text-blue-700 px-3 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer";
+                } else {
+                    el.className = "text-slate-500 hover:text-slate-900 px-3 py-2 rounded-md text-sm font-medium transition-colors hover:bg-slate-50 cursor-pointer";
+                }
+            });
+        }
+    </script>
+</head>
+
+<body class="bg-slate-50 text-slate-800 font-sans min-h-screen">
+
+    <!-- Navbar -->
+    <nav class="bg-white border-b border-slate-200 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <span class="text-2xl font-bold gradient-text">Investment Master</span>
+                    <div class="ml-10 flex items-baseline space-x-4">
+                        <a id="nav-valuation" onclick="switchTab('valuation')"
+                            class="bg-blue-50 text-blue-700 px-3 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer">个股估值</a>
+                        <a id="nav-selection" onclick="switchTab('selection')"
+                            class="text-slate-500 hover:text-slate-900 px-3 py-2 rounded-md text-sm font-medium transition-colors hover:bg-slate-50 cursor-pointer">选股策略</a>
+                        <a id="nav-analysis" onclick="switchTab('analysis')"
+                            class="text-slate-500 hover:text-slate-900 px-3 py-2 rounded-md text-sm font-medium transition-colors hover:bg-slate-50 cursor-pointer">行业分析</a>
+                    </div>
+                </div>
+                <div class="flex items-center">
+                    <div class="relative">
+                        <input type="text"
+                            class="w-64 pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            placeholder="输入代码 (如 600036.SS)..." value="600036.SS">
+                        <div class="absolute left-3 top-2.5 text-slate-400">
+                            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+        <!-- 1. Valuation View (Default) -->
+        <div id="view-valuation">
+            <!-- Stock Header -->
+            <div class="mb-8">
+                <div class="flex justify-between items-end">
+                    <div>
+                        <h1 class="text-3xl font-bold text-slate-900">招商银行 <span
+                                class="text-xl text-slate-500 font-normal ml-2">600036.SS</span></h1>
+                        <p class="text-sm text-slate-500 mt-1">行业: 银行 / 金融服务</p>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-4xl font-bold text-slate-900">¥32.50</div>
+                        <div class="text-sm text-green-600 font-medium">+1.25 (+3.85%)</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Key Metrics Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+                    <div class="text-sm text-slate-500">市盈率 (TTM)</div>
+                    <div class="text-2xl font-semibold mt-1">5.30</div>
+                    <div class="text-xs text-green-600 mt-1">↓ 低于行业均值</div>
+                </div>
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+                    <div class="text-sm text-slate-500">市净率 (PB)</div>
+                    <div class="text-2xl font-semibold mt-1">0.85</div>
+                    <div class="text-xs text-green-600 mt-1">↓ 处于历史低位</div>
+                </div>
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+                    <div class="text-sm text-slate-500">ROE (加权)</div>
+                    <div class="text-2xl font-semibold mt-1">15.2%</div>
+                    <div class="text-xs text-blue-600 mt-1">盈利能力优秀</div>
+                </div>
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+                    <div class="text-sm text-slate-500">股息率</div>
+                    <div class="text-2xl font-semibold mt-1">5.8%</div>
+                    <div class="text-xs text-orange-600 mt-1">高分红回报</div>
+                </div>
+            </div>
+
+            <!-- Valuation Models Section -->
+            <h2 class="text-xl font-bold text-slate-900 mb-6">综合估值模型分析</h2>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+
+                <!-- 1. PB-ROE Model Card -->
+                <div
+                    class="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden col-span-1 lg:col-span-1">
+                    <div class="p-6 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
+                        <h3 class="font-bold text-slate-800">PB-ROE 锚定估值</h3>
+                        <span class="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full font-bold">建议买入</span>
+                    </div>
+                    <div class="p-6">
+                        <div class="flex justify-between items-center mb-4">
+                            <span class="text-sm text-slate-500">当前 PB</span>
+                            <span class="font-bold">0.85x</span>
+                        </div>
+                        <div class="flex justify-between items-center mb-6">
+                            <span class="text-sm text-slate-500">合理 PB (ROE/7)</span>
+                            <span class="font-bold text-blue-600">2.17x</span>
+                        </div>
+
+                        <!-- Visual Range Bar -->
+                        <div class="relative pt-6 pb-2">
+                            <div class="h-2 bg-gray-200 rounded-full overflow-hidden">
+                                <div class="h-full bg-gradient-to-r from-green-400 via-yellow-400 to-red-500 w-full">
+                                </div>
+                            </div>
+                            <!-- Markers -->
+                            <div class="absolute top-0 left-[20%] -translate-x-1/2 flex flex-col items-center">
+                                <span class="text-xs font-bold text-green-600">0.85x</span>
+                                <div class="w-0.5 h-6 bg-slate-800"></div>
+                                <span class="text-[10px] text-slate-500">当前</span>
+                            </div>
+                            <div
+                                class="absolute top-0 left-[60%] -translate-x-1/2 flex flex-col items-center opacity-50">
+                                <div class="w-0.5 h-2 bg-slate-400 mt-4"></div>
+                                <span class="text-[10px] text-slate-500">合理(2.17x)</span>
+                            </div>
+                        </div>
+
+                        <div class="mt-6 bg-slate-50 rounded-lg p-4 text-sm">
+                            <div class="flex justify-between mb-2">
+                                <span class="text-slate-500">买入区间 (<0.8x 合理)</span>
+                                        <span class="font-medium text-green-600">
+                                            < 1.74x</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-slate-500">卖出区间 (>1.2x 合理)</span>
+                                <span class="font-medium text-red-600">> 2.60x</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. PR Valuation Card -->
+                <div
+                    class="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden col-span-1 lg:col-span-1">
+                    <div class="p-6 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
+                        <h3 class="font-bold text-slate-800">市赚率 (PR) 模型</h3>
+                        <span class="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full font-bold">严重低估</span>
+                    </div>
+                    <div class="p-6">
+                        <div class="text-center py-4">
+                            <div class="text-5xl font-bold text-green-600">0.35</div>
+                            <div class="text-sm text-slate-500 mt-2">PR 值 (越低越好)</div>
+                        </div>
+
+                        <div class="space-y-3 mt-4">
+                            <div class="flex justify-between text-sm">
+                                <span class="text-slate-500">修正系数 N (分红率>50%)</span>
+                                <span class="font-mono">1.0</span>
+                            </div>
+                            <div class="flex justify-between text-sm">
+                                <span class="text-slate-500">计算公式</span>
+                                <span class="font-mono text-xs">1.0 * (5.3 / 15.2)</span>
+                            </div>
+                        </div>
+
+                        <div class="mt-6 grid grid-cols-3 gap-2 text-center text-xs">
+                            <div class="bg-green-50 text-green-700 p-2 rounded border border-green-200 font-bold">
+                                < 0.6<br>买入
+                            </div>
+                            <div class="bg-gray-50 text-gray-400 p-2 rounded border border-gray-200">
+                                0.6 - 1.0<br>持有
+                            </div>
+                            <div class="bg-gray-50 text-gray-400 p-2 rounded border border-gray-200">
+                                > 1.0<br>卖出
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. DCF Card -->
+                <div
+                    class="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden col-span-1 lg:col-span-1">
+                    <div class="p-6 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
+                        <h3 class="font-bold text-slate-800">DCF 现金流折现</h3>
+                        <span class="bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded-full font-bold">谨慎参考</span>
+                    </div>
+                    <div class="p-6">
+                        <div class="flex justify-between items-center mb-4">
+                            <span class="text-sm text-slate-500">理论估值</span>
+                            <span class="font-bold text-xl">¥45.20</span>
+                        </div>
+                        <div class="flex justify-between items-center mb-2 text-sm">
+                            <span class="text-slate-500">当前安全边际</span>
+                            <span class="text-green-600 font-bold">+28%</span>
+                        </div>
+
+                        <div class="mt-4">
+                            <table class="w-full text-xs text-right">
+                                <thead class="bg-slate-50 text-slate-500">
+                                    <tr>
+                                        <th class="p-2 text-left">年份</th>
+                                        <th class="p-2">FCF</th>
+                                        <th class="p-2">现值</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-100">
+                                    <tr>
+                                        <td class="p-2 text-left text-slate-600">2026</td>
+                                        <td class="p-2">100亿</td>
+                                        <td class="p-2">90亿</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="p-2 text-left text-slate-600">2027</td>
+                                        <td class="p-2">105亿</td>
+                                        <td class="p-2">86亿</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="p-2 text-left text-slate-600">...</td>
+                                        <td class="p-2">...</td>
+                                        <td class="p-2">...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="mt-4 text-xs text-slate-400 text-center">
+                            基于 WACC 10%, 永续增长 2%
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Details / Terminal Output Style -->
+            <div class="mt-8">
+                <h2 class="text-xl font-bold text-slate-900 mb-4">详细分析日志</h2>
+                <div class="bg-slate-900 text-slate-200 p-6 rounded-xl font-mono text-sm shadow-inner overflow-x-auto">
+                    <p class="text-green-400">$ analyzing 600036.SS...</p>
+                    <p class="mt-2">[PB-ROE 估值法分析]</p>
+                    <p class="ml-4">1. 计算规则说明: 合理 PB = (ROE x 100) / 7</p>
+                    <p class="ml-4">2. 详细计算过程:</p>
+                    <p class="ml-8">- 输入 ROE: 15.20%</p>
+                    <p class="ml-8">- 计算合理 PB: 15.20 / 7 = 2.17x</p>
+                    <p class="ml-8">- 当前实际 PB: 0.85x</p>
+                    <p class="mt-2 text-yellow-300">>>> 结论: 严重低估 (PB 维度)</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. Stock Selection View -->
+        <div id="view-selection" class="hidden">
+            <div class="mb-8">
+                <h1 class="text-3xl font-bold text-slate-900">智能选股策略</h1>
+                <p class="text-sm text-slate-500 mt-1">基于价值投资理念的多因子筛选模型</p>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
+                <!-- Filter Sidebar -->
+                <div class="lg:col-span-1 space-y-6">
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+                        <h3 class="font-bold text-slate-800 mb-4">筛选条件</h3>
+
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">市盈率 (PE-TTM)</label>
+                            <div class="flex items-center space-x-2">
+                                <input type="number" value="0" class="w-20 px-2 py-1 border rounded text-sm">
+                                <span class="text-slate-400">-</span>
+                                <input type="number" value="20" class="w-20 px-2 py-1 border rounded text-sm">
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">ROE (加权)</label>
+                            <div class="flex items-center space-x-2">
+                                <span class="text-sm text-slate-500">></span>
+                                <input type="number" value="15" class="w-full px-2 py-1 border rounded text-sm">
+                                <span class="text-sm text-slate-500">%</span>
+                            </div>
+                        </div>
+
+                        <div class="mb-6">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">股息率</label>
+                            <div class="flex items-center space-x-2">
+                                <span class="text-sm text-slate-500">></span>
+                                <input type="number" value="3" class="w-full px-2 py-1 border rounded text-sm">
+                                <span class="text-sm text-slate-500">%</span>
+                            </div>
+                        </div>
+
+                        <button
+                            class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition-colors">
+                            执行筛选
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Results Table -->
+                <div class="lg:col-span-3">
+                    <div class="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
+                        <table class="min-w-full divide-y divide-slate-200">
+                            <thead class="bg-slate-50">
+                                <tr>
+                                    <th
+                                        class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                                        代码</th>
+                                    <th
+                                        class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                                        名称</th>
+                                    <th
+                                        class="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">
+                                        PE</th>
+                                    <th
+                                        class="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">
+                                        ROE</th>
+                                    <th
+                                        class="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">
+                                        股息率</th>
+                                    <th
+                                        class="px-6 py-3 text-center text-xs font-medium text-slate-500 uppercase tracking-wider">
+                                        评分</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-slate-200">
+                                <tr class="hover:bg-slate-50 transition-colors">
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">
+                                        600036.SS</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-600">招商银行</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-slate-900">5.30
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-green-600 font-bold">
+                                        15.2%</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-slate-900">5.8%
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-center">
+                                        <span
+                                            class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">92</span>
+                                    </td>
+                                </tr>
+                                <tr class="hover:bg-slate-50 transition-colors">
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">
+                                        600519.SS</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-600">贵州茅台</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-slate-900">22.5
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-green-600 font-bold">
+                                        28.4%</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-slate-900">2.1%
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-center">
+                                        <span
+                                            class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">88</span>
+                                    </td>
+                                </tr>
+                                <tr class="hover:bg-slate-50 transition-colors">
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">
+                                        000651.SZ</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-600">格力电器</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-slate-900">7.2
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-green-600 font-bold">
+                                        18.5%</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-slate-900">6.5%
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-center">
+                                        <span
+                                            class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">90</span>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. Industry Analysis View -->
+        <div id="view-analysis" class="hidden">
+            <div class="mb-8">
+                <h1 class="text-3xl font-bold text-slate-900">行业分析</h1>
+                <p class="text-sm text-slate-500 mt-1">市场热点与板块轮动监测</p>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <!-- Market Map (Placeholder) -->
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+                    <h3 class="font-bold text-slate-800 mb-4">板块涨跌幅热力图</h3>
+                    <div
+                        class="aspect-video bg-slate-50 rounded-lg flex items-center justify-center border border-dashed border-slate-300">
+                        <div class="text-center">
+                            <svg class="mx-auto h-12 w-12 text-slate-400" fill="none" stroke="currentColor"
+                                viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z">
+                                </path>
+                            </svg>
+                            <p class="mt-2 text-sm text-slate-500">Charts.js 可视化区域</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Top Sectors -->
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+                    <h3 class="font-bold text-slate-800 mb-4">领涨行业 (Top 5)</h3>
+                    <div class="space-y-4">
+                        <div class="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+                            <div class="flex items-center">
+                                <span
+                                    class="w-8 h-8 rounded-full bg-red-100 text-red-600 flex items-center justify-center text-xs font-bold mr-3">1</span>
+                                <span class="font-medium text-slate-700">银行</span>
+                            </div>
+                            <div class="text-red-600 font-bold">+2.45%</div>
+                        </div>
+                        <div class="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+                            <div class="flex items-center">
+                                <span
+                                    class="w-8 h-8 rounded-full bg-red-100 text-red-600 flex items-center justify-center text-xs font-bold mr-3">2</span>
+                                <span class="font-medium text-slate-700">家用电器</span>
+                            </div>
+                            <div class="text-red-600 font-bold">+1.8%</div>
+                        </div>
+                        <div class="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+                            <div class="flex items-center">
+                                <span
+                                    class="w-8 h-8 rounded-full bg-red-100 text-red-600 flex items-center justify-center text-xs font-bold mr-3">3</span>
+                                <span class="font-medium text-slate-700">食品饮料</span>
+                            </div>
+                            <div class="text-red-600 font-bold">+1.2%</div>
+                        </div>
+                        <div class="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+                            <div class="flex items-center">
+                                <span
+                                    class="w-8 h-8 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center text-xs font-bold mr-3">4</span>
+                                <span class="font-medium text-slate-700">煤炭</span>
+                            </div>
+                            <div class="text-red-500 font-bold">+0.8%</div>
+                        </div>
+                        <div class="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+                            <div class="flex items-center">
+                                <span
+                                    class="w-8 h-8 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center text-xs font-bold mr-3">5</span>
+                                <span class="font-medium text-slate-700">公用事业</span>
+                            </div>
+                            <div class="text-red-500 font-bold">+0.5%</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+</body>
+
+</html>
