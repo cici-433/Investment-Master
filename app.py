@@ -226,7 +226,8 @@ def get_holdings():
                     "market_value": round(market_value, 2),
                     "gain": round(gain, 2),
                     "gain_percent": round(gain_percent, 2),
-                    "group_id": h.get("group_id", "default")
+                    "group_id": h.get("group_id", "default"),
+                    "note": h.get("note", "")
                 })
                 continue
 
@@ -250,7 +251,8 @@ def get_holdings():
                     "market_value": round(market_value, 2),
                     "gain": round(gain, 2),
                     "gain_percent": round(gain_percent, 2),
-                    "group_id": h.get("group_id", "default")
+                    "group_id": h.get("group_id", "default"),
+                    "note": h.get("note", "")
                 })
             else:
                 # Price fetch failed
@@ -261,7 +263,8 @@ def get_holdings():
                     "market_value": 0,
                     "gain": 0,
                     "gain_percent": 0,
-                    "group_id": h.get("group_id", "default")
+                    "group_id": h.get("group_id", "default"),
+                    "note": h.get("note", "")
                 })
 
         except Exception as e:
@@ -316,8 +319,9 @@ def add_holding():
     shares = float(data.get('shares', 0))
     cost = float(data.get('cost', 0))
     group_id = data.get('group_id', 'default')
+    note = data.get('note')
     
-    if master.portfolio.add_holding(ticker, shares, cost, group_id):
+    if master.portfolio.add_holding(ticker, shares, cost, group_id, note):
         return jsonify({"status": "success"})
     return jsonify({"error": "Failed to add holding"}), 500
 
@@ -330,8 +334,9 @@ def update_holding(ticker):
     shares = float(data.get('shares', 0))
     cost = float(data.get('cost', 0))
     group_id = data.get('group_id')
+    note = data.get('note')
     
-    if master.portfolio.add_holding(normalized_ticker, shares, cost, group_id):
+    if master.portfolio.add_holding(normalized_ticker, shares, cost, group_id, note):
         return jsonify({"status": "success"})
     return jsonify({"error": "Failed to update holding"}), 500
 

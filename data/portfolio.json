@@ -4,7 +4,7 @@
             "ticker": "002027.SZ",
             "shares": 4700.0,
             "cost": 6.7784,
-            "group_id": "default"
+            "group_id": "363c776e-fee3-415f-a44e-e4ff84f87655"
         },
         {
             "ticker": "600418.SS",
@@ -16,13 +16,14 @@
             "ticker": "513180.SS",
             "shares": 51400.0,
             "cost": 0.744,
-            "group_id": "default"
+            "group_id": "default",
+            "note": "5630买入一笔，5300再买入一比，这些加的都是额外的，涨回来要减去的"
         },
         {
             "ticker": "513120.SS",
             "shares": 11500.0,
             "cost": 1.3054,
-            "group_id": "default"
+            "group_id": "363c776e-fee3-415f-a44e-e4ff84f87655"
         },
         {
             "ticker": "560280.SS",
@@ -34,25 +35,28 @@
             "ticker": "512000.SS",
             "shares": 8700.0,
             "cost": 0.579,
-            "group_id": "default"
+            "group_id": "default",
+            "note": "作为非银金融，业绩好不涨，所以后续看好，跟踪中证全指证券公司指数，及399975。目前的pb是1.48，均值为1.6，还低估"
         },
         {
             "ticker": "512070.SS",
             "shares": 5400.0,
             "cost": 0.928,
-            "group_id": "default"
+            "group_id": "default",
+            "note": "作为非银金融，业绩好不涨，所以后续看好，跟踪中证全指证券公司指数，及399975。目前的pb是1.48，均值为1.6，还低估"
         },
         {
             "ticker": "562600.SS",
             "shares": 5500.0,
             "cost": 0.919,
-            "group_id": "default"
+            "group_id": "363c776e-fee3-415f-a44e-e4ff84f87655"
         },
         {
             "ticker": "515790.SS",
             "shares": 10500.0,
             "cost": 0.957,
-            "group_id": "default"
+            "group_id": "363c776e-fee3-415f-a44e-e4ff84f87655",
+            "note": "以隆基绿能为标准进行估值，按周期股估值pr = 0.47，目前是左侧"
         },
         {
             "ticker": "560610.SS",
@@ -64,13 +68,15 @@
             "ticker": "512890.SS",
             "shares": 22800.0,
             "cost": 1.178,
-            "group_id": "150ccad3-ba2f-4ae7-805c-479f1802893b"
+            "group_id": "150ccad3-ba2f-4ae7-805c-479f1802893b",
+            "note": "周线RSI40以下买，70以上卖，30日均线一下买"
         },
         {
             "ticker": "601838.SS",
             "shares": 300.0,
             "cost": 18.377,
-            "group_id": "150ccad3-ba2f-4ae7-805c-479f1802893b"
+            "group_id": "150ccad3-ba2f-4ae7-805c-479f1802893b",
+            "note": "6折PR + 5%股息 买入，10年国债+2%以下卖出，及3.75以下卖出"
         },
         {
             "ticker": "600919.SS",

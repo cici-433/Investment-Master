@@ -120,7 +120,7 @@ class PortfolioManager:
         self.save_data(data)
         return True
 
-    def add_holding(self, ticker, shares, cost, group_id='default'):
+    def add_holding(self, ticker, shares, cost, group_id='default', note=None):
         data = self.load_data()
         # Check if already exists, update if so
         found = False
@@ -144,6 +144,9 @@ class PortfolioManager:
                     item["group_id"] = group_id
                 elif "group_id" not in item:
                     item["group_id"] = "default"
+                
+                if note is not None:
+                    item["note"] = note
                     
                 found = True
                 break
@@ -153,7 +156,8 @@ class PortfolioManager:
                 "ticker": ticker,
                 "shares": shares,
                 "cost": cost,
-                "group_id": group_id or "default"
+                "group_id": group_id or "default",
+                "note": note or ""
             })
         
         self.save_data(data)

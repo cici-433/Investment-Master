@@ -775,6 +775,12 @@
                             class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
                     </div>
                 </div>
+
+                <div id="field-note" class="mt-4">
+                    <label class="block text-sm font-medium text-slate-700 mb-1">备注</label>
+                    <textarea id="modal-note" placeholder="添加备注信息..." rows="2"
+                        class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none resize-none"></textarea>
+                </div>
             </div>
 
             <div class="mt-6 flex justify-end space-x-3">
@@ -804,6 +810,7 @@
         // Reset fields
         document.getElementById('modal-shares').value = '';
         document.getElementById('modal-cost').value = '';
+        document.getElementById('modal-note').value = '';
 
         // Reset type
         document.querySelector('input[name="assetType"][value="stock"]').checked = true;
@@ -831,7 +838,7 @@
         }
     }
 
-    function openEditModal(ticker, shares, cost) {
+    function openEditModal(ticker, shares, cost, note) {
         isEditing = true;
         document.getElementById('add-stock-modal').classList.remove('hidden');
         document.getElementById('modal-title').textContent = '编辑持仓';
@@ -844,6 +851,7 @@
 
         document.getElementById('modal-shares').value = shares;
         document.getElementById('modal-cost').value = cost;
+        document.getElementById('modal-note').value = note && note !== 'undefined' ? note : '';
         document.getElementById('modal-holding-fields').classList.remove('hidden');
 
         // Adjust fields if it is cash
@@ -893,6 +901,7 @@
             } else {
                 body.cost = document.getElementById('modal-cost').value;
             }
+            body.note = document.getElementById('modal-note').value;
         }
 
         try {
@@ -987,9 +996,9 @@
                         const itemEl = evt.item;
                         const newGroupId = evt.to.getAttribute('data-group-id');
                         const ticker = itemEl.getAttribute('data-ticker');
-                        
+
                         console.log(`Dragging ${ticker} to group ${newGroupId}`);
-                        
+
                         // If moved to a different list
                         if (evt.from !== evt.to) {
                             console.log('Moving holding...');
@@ -1010,6 +1019,18 @@
         } catch (e) {
             console.error(e);
             container.innerHTML = '<div class="text-center py-4 text-red-500">Failed to load holdings</div>';
+        }
+    }
+
+    function toggleNote(element) {
+        if (element.classList.contains('truncate')) {
+            element.classList.remove('truncate');
+            element.classList.remove('max-w-xs');
+            element.style.whiteSpace = 'normal';
+        } else {
+            element.classList.add('truncate');
+            element.classList.add('max-w-xs');
+            element.style.whiteSpace = '';
         }
     }
 
@@ -1055,9 +1076,12 @@
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-slate-900">
                          --
                     </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500 truncate max-w-xs cursor-pointer hover:bg-slate-100" title="${h.note || ''}" onclick="toggleNote(this)">
+                        ${h.note || ''}
+                    </td>
                     <td class="px-6 py-4 whitespace-nowrap text-center">
                         <a href="#" class="text-blue-600 hover:text-blue-900 mr-2 text-xs font-medium" onclick="analyzeStock('${h.ticker}'); switchTab('valuation')">分析</a>
-                        <a href="#" class="text-indigo-600 hover:text-indigo-900 mr-2 text-xs font-medium" onclick="openEditModal('${h.ticker}', '${h.shares}', '${h.cost}')">编辑</a>
+                        <a href="#" class="text-indigo-600 hover:text-indigo-900 mr-2 text-xs font-medium" onclick="openEditModal('${h.ticker}', '${h.shares}', '${h.cost}', '${h.note || ''}')">编辑</a>
                         <a href="#" class="text-red-600 hover:text-red-900 text-xs font-medium" onclick="removeStock('${h.ticker}', 'holdings')">删除</a>
                     </td>
                 </tr>
@@ -1094,6 +1118,7 @@
                             <th class="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">市值</th>
                             <th class="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">盈亏</th>
                             <th class="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">涨跌</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">备注</th>
                             <th class="px-6 py-3 text-center text-xs font-medium text-slate-500 uppercase tracking-wider">操作</th>
                         </tr>
                     </thead>
