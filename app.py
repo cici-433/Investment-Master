@@ -193,5 +193,132 @@ def market_status():
     
     return jsonify({"sectors": sectors})
 
+# --- Portfolio API ---
+
+@app.route('/api/portfolio/holdings', methods=['GET'])
+def get_holdings():
+    holdings = master.portfolio.get_holdings()
+    # Enrich with current market data
+    enriched_holdings = []
+    for h in holdings:
+        raw_ticker = h['ticker']
+        # Normalize ticker for API calls (e.g. 513180 -> 513180.SS)
+        ticker = master._normalize_ticker(raw_ticker)
+        
+        try:
+            current_price = master.valuator.get_current_price(ticker)
+            cn_info = get_cn_stock_info(ticker)
+            name = cn_info['name'] if cn_info else raw_ticker
+            
+            if current_price is not None:
+                # Calculate market value and gain
+                market_value = current_price * h['shares']
+                cost_basis = h['cost'] * h['shares']
+                gain = market_value - cost_basis
+                gain_percent = (gain / cost_basis) * 100 if cost_basis > 0 else 0
+                
+                enriched_holdings.append({
+                    "ticker": raw_ticker, # Keep original ticker for display/id consistency
+                    "name": name,
+                    "shares": h['shares'],
+                    "cost": h['cost'],
+                    "current_price": current_price,
+                    "market_value": round(market_value, 2),
+                    "gain": round(gain, 2),
+                    "gain_percent": round(gain_percent, 2)
+                })
+            else:
+                # Price fetch failed
+                enriched_holdings.append({
+                    **h,
+                    "name": name,
+                    "current_price": "N/A",
+                    "market_value": 0,
+                    "gain": 0,
+                    "gain_percent": 0
+                })
+
+        except Exception as e:
+            print(f"Error enriching holding {raw_ticker}: {e}")
+            enriched_holdings.append(h) # Return basic data if fetch fails
+            
+    return jsonify(enriched_holdings)
+
+@app.route('/api/portfolio/holdings', methods=['POST'])
+def add_holding():
+    data = request.json
+    ticker = master._normalize_ticker(data.get('ticker'))
+    shares = float(data.get('shares', 0))
+    cost = float(data.get('cost', 0))
+    
+    if master.portfolio.add_holding(ticker, shares, cost):
+        return jsonify({"status": "success"})
+    return jsonify({"error": "Failed to add holding"}), 500
+
+@app.route('/api/portfolio/holdings/<ticker>', methods=['PUT'])
+def update_holding(ticker):
+    data = request.json
+    # Ticker in URL is authoritative, but we normalize it just in case
+    normalized_ticker = master._normalize_ticker(ticker)
+    
+    shares = float(data.get('shares', 0))
+    cost = float(data.get('cost', 0))
+    
+    if master.portfolio.add_holding(normalized_ticker, shares, cost):
+        return jsonify({"status": "success"})
+    return jsonify({"error": "Failed to update holding"}), 500
+
+@app.route('/api/portfolio/holdings/<ticker>', methods=['DELETE'])
+def remove_holding(ticker):
+    if master.portfolio.remove_holding(ticker):
+        return jsonify({"status": "success"})
+    return jsonify({"error": "Failed to remove holding"}), 500
+
+@app.route('/api/portfolio/watchlist', methods=['GET'])
+def get_watchlist():
+    watchlist = master.portfolio.get_watchlist()
+    enriched_watchlist = []
+    for raw_ticker in watchlist:
+        # Normalize ticker for API calls
+        ticker = master._normalize_ticker(raw_ticker)
+        try:
+            # We need PE, Dividend, Change
+            pe_data = master.valuator.calculate_pe(ticker)
+            current_price = master.valuator.get_current_price(ticker)
+            cn_info = get_cn_stock_info(ticker)
+            name = cn_info['name'] if cn_info else raw_ticker
+            
+            # Safe access to pe_data which might be None
+            if pe_data is None:
+                pe_data = {}
+
+            enriched_watchlist.append({
+                "ticker": raw_ticker,
+                "name": name,
+                "price": current_price if current_price is not None else "N/A",
+                "pe": pe_data.get('trailing_pe', '--'),
+                "dividend_yield": pe_data.get('dividend_yield', 0),
+                "change_percent": pe_data.get('change_percent', 0)
+            })
+        except Exception as e:
+            print(f"Error enriching watchlist {raw_ticker}: {e}")
+            enriched_watchlist.append({"ticker": raw_ticker})
+            
+    return jsonify(enriched_watchlist)
+
+@app.route('/api/portfolio/watchlist', methods=['POST'])
+def add_watchlist():
+    data = request.json
+    ticker = master._normalize_ticker(data.get('ticker'))
+    if master.portfolio.add_to_watchlist(ticker):
+        return jsonify({"status": "success"})
+    return jsonify({"error": "Failed to add to watchlist"}), 500
+
+@app.route('/api/portfolio/watchlist/<ticker>', methods=['DELETE'])
+def remove_watchlist(ticker):
+    if master.portfolio.remove_from_watchlist(ticker):
+        return jsonify({"status": "success"})
+    return jsonify({"error": "Failed to remove from watchlist"}), 500
+
 if __name__ == '__main__':
     app.run(debug=True, port=5000)

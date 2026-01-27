@@ -1,0 +1,70 @@
+{
+    "holdings": [
+        {
+            "ticker": "002027.SZ",
+            "shares": 4700.0,
+            "cost": 6.7784
+        },
+        {
+            "ticker": "600418.SS",
+            "shares": 1300.0,
+            "cost": 50.218
+        },
+        {
+            "ticker": "513180.SS",
+            "shares": 51400.0,
+            "cost": 0.744
+        },
+        {
+            "ticker": "513120.SS",
+            "shares": 11500.0,
+            "cost": 1.3054
+        },
+        {
+            "ticker": "560280.SS",
+            "shares": 3100.0,
+            "cost": 1.6596
+        },
+        {
+            "ticker": "512000.SS",
+            "shares": 8700.0,
+            "cost": 0.579
+        },
+        {
+            "ticker": "512070.SS",
+            "shares": 5400.0,
+            "cost": 0.928
+        },
+        {
+            "ticker": "562600.SS",
+            "shares": 5500.0,
+            "cost": 0.919
+        },
+        {
+            "ticker": "515790.SS",
+            "shares": 10500.0,
+            "cost": 0.957
+        },
+        {
+            "ticker": "560610.SS",
+            "shares": 23800.0,
+            "cost": 0.926
+        },
+        {
+            "ticker": "512890.SS",
+            "shares": 22800.0,
+            "cost": 1.178
+        },
+        {
+            "ticker": "601838.SS",
+            "shares": 300.0,
+            "cost": 18.377
+        },
+        {
+            "ticker": "600919.SS",
+            "shares": 400.0,
+            "cost": 10.472
+        }
+    ],
+    "watchlist": []
+}

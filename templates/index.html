@@ -24,6 +24,7 @@
         function switchTab(tabId) {
             // Hide all views
             document.getElementById('view-valuation').classList.add('hidden');
+            document.getElementById('view-portfolio').classList.add('hidden');
             document.getElementById('view-selection').classList.add('hidden');
             document.getElementById('view-analysis').classList.add('hidden');
 
@@ -31,7 +32,7 @@
             document.getElementById('view-' + tabId).classList.remove('hidden');
 
             // Reset nav styles
-            const navs = ['valuation', 'selection', 'analysis'];
+            const navs = ['valuation', 'portfolio', 'selection', 'analysis'];
             navs.forEach(nav => {
                 const el = document.getElementById('nav-' + nav);
                 if (nav === tabId) {
@@ -44,7 +45,36 @@
             // Trigger specific view logic
             if (tabId === 'analysis') {
                 loadMarketData();
+            } else if (tabId === 'portfolio') {
+                if (currentPortfolioTab === 'holdings') loadHoldings();
+                else loadWatchlist();
             }
+        }
+
+        function switchPortfolioTab(tab) {
+            currentPortfolioTab = tab; // Update global state
+
+            // Hide all
+            document.getElementById('content-holdings').classList.add('hidden');
+            document.getElementById('content-watchlist').classList.add('hidden');
+
+            // Show selected
+            document.getElementById('content-' + tab).classList.remove('hidden');
+
+            // Update Tab Styles
+            const tabs = ['holdings', 'watchlist'];
+            tabs.forEach(t => {
+                const el = document.getElementById('tab-' + t);
+                if (t === tab) {
+                    el.className = "border-blue-500 text-blue-600 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors";
+                } else {
+                    el.className = "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors";
+                }
+            });
+
+            // Load Data
+            if (tab === 'holdings') loadHoldings();
+            else loadWatchlist();
         }
     </script>
 </head>
@@ -60,6 +90,8 @@
                     <div class="ml-10 flex items-baseline space-x-4">
                         <a id="nav-valuation" onclick="switchTab('valuation')"
                             class="bg-blue-50 text-blue-700 px-3 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer">个股估值</a>
+                        <a id="nav-portfolio" onclick="switchTab('portfolio')"
+                            class="text-slate-500 hover:text-slate-900 px-3 py-2 rounded-md text-sm font-medium transition-colors hover:bg-slate-50 cursor-pointer">我的持仓</a>
                         <a id="nav-selection" onclick="switchTab('selection')"
                             class="text-slate-500 hover:text-slate-900 px-3 py-2 rounded-md text-sm font-medium transition-colors hover:bg-slate-50 cursor-pointer">选股策略</a>
                         <a id="nav-analysis" onclick="switchTab('analysis')"
@@ -563,6 +595,119 @@
             </div>
         </div>
 
+        <!-- 4. Portfolio View -->
+        <div id="view-portfolio" class="hidden">
+            <div class="mb-8 flex justify-between items-center">
+                <div>
+                    <h1 class="text-3xl font-bold text-slate-900">我的投资组合</h1>
+                    <p class="text-sm text-slate-500 mt-1">管理持仓与关注列表</p>
+                </div>
+                <button onclick="openAddModal()"
+                    class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors shadow-sm">
+                    + 添加股票
+                </button>
+            </div>
+
+            <!-- Tabs -->
+            <div class="border-b border-slate-200 mb-6">
+                <nav class="-mb-px flex space-x-8">
+                    <a href="#" onclick="switchPortfolioTab('holdings')" id="tab-holdings"
+                        class="border-blue-500 text-blue-600 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors">
+                        我的持仓
+                    </a>
+                    <a href="#" onclick="switchPortfolioTab('watchlist')" id="tab-watchlist"
+                        class="border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors">
+                        自选关注
+                    </a>
+                </nav>
+            </div>
+
+            <!-- Holdings Table -->
+            <div id="content-holdings">
+                <!-- Summary Card -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+                        <div class="text-sm text-slate-500">总资产 (元)</div>
+                        <div class="text-2xl font-bold text-slate-900 mt-1" id="total-assets">--</div>
+                    </div>
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+                        <div class="text-sm text-slate-500">总盈亏</div>
+                        <div class="text-2xl font-bold text-slate-900 mt-1" id="total-gain">--</div>
+                    </div>
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+                        <div class="text-sm text-slate-500">当日盈亏</div>
+                        <div class="text-2xl font-bold text-slate-900 mt-1">--</div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
+                    <table class="min-w-full divide-y divide-slate-200">
+                        <thead class="bg-slate-50">
+                            <tr>
+                                <th
+                                    class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                                    股票</th>
+                                <th
+                                    class="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">
+                                    持仓/可用</th>
+                                <th
+                                    class="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">
+                                    现价/成本</th>
+                                <th
+                                    class="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">
+                                    持仓市值</th>
+                                <th
+                                    class="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">
+                                    持仓盈亏</th>
+                                <th
+                                    class="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">
+                                    当日涨跌</th>
+                                <th
+                                    class="px-6 py-3 text-center text-xs font-medium text-slate-500 uppercase tracking-wider">
+                                    操作</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-slate-200" id="holdings-list">
+                            <!-- Data will be loaded via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Watchlist Table -->
+            <div id="content-watchlist" class="hidden">
+                <div class="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
+                    <table class="min-w-full divide-y divide-slate-200">
+                        <thead class="bg-slate-50">
+                            <tr>
+                                <th
+                                    class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                                    股票</th>
+                                <th
+                                    class="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">
+                                    现价</th>
+                                <th
+                                    class="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">
+                                    市盈率(TTM)</th>
+                                <th
+                                    class="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">
+                                    股息率</th>
+                                <th
+                                    class="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">
+                                    当日涨跌</th>
+                                <th
+                                    class="px-6 py-3 text-center text-xs font-medium text-slate-500 uppercase tracking-wider">
+                                    操作</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-slate-200" id="watchlist-list">
+                            <!-- Data will be loaded via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
         <!-- 3. Industry Analysis View -->
         <div id="view-analysis" class="hidden">
             <div class="mb-8">
@@ -592,10 +737,250 @@
 
     </main>
 
+    <!-- Add Stock Modal -->
+    <div id="add-stock-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center">
+        <div class="bg-white rounded-xl shadow-lg p-6 w-96">
+            <h3 id="modal-title" class="text-xl font-bold mb-4">添加股票</h3>
+
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">股票代码</label>
+                    <input type="text" id="modal-ticker" placeholder="e.g. 600519"
+                        class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                </div>
+
+                <div id="modal-holding-fields">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">持仓数量</label>
+                        <input type="number" id="modal-shares" placeholder="100"
+                            class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                    </div>
+                    <div class="mt-4">
+                        <label class="block text-sm font-medium text-slate-700 mb-1">持仓成本</label>
+                        <input type="number" id="modal-cost" step="0.01" placeholder="100.00"
+                            class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-6 flex justify-end space-x-3">
+                <button onclick="closeAddModal()"
+                    class="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">取消</button>
+                <button onclick="submitAddStock()"
+                    class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">确认添加</button>
+            </div>
+        </div>
+    </div>
+
 </body>
 
 </html>
 <script>
+    let currentPortfolioTab = 'holdings'; // 'holdings' or 'watchlist'
+    let isEditing = false;
+
+    function openAddModal() {
+        isEditing = false;
+        document.getElementById('add-stock-modal').classList.remove('hidden');
+        document.getElementById('modal-title').textContent = '添加股票';
+        document.getElementById('modal-ticker').value = '';
+        document.getElementById('modal-ticker').disabled = false;
+        document.getElementById('modal-ticker').classList.remove('bg-slate-100');
+
+        // Reset fields
+        document.getElementById('modal-shares').value = '';
+        document.getElementById('modal-cost').value = '';
+
+        if (currentPortfolioTab === 'holdings') {
+            document.getElementById('modal-holding-fields').classList.remove('hidden');
+        } else {
+            document.getElementById('modal-holding-fields').classList.add('hidden');
+        }
+    }
+
+    function openEditModal(ticker, shares, cost) {
+        isEditing = true;
+        document.getElementById('add-stock-modal').classList.remove('hidden');
+        document.getElementById('modal-title').textContent = '编辑持仓';
+
+        const tickerInput = document.getElementById('modal-ticker');
+        tickerInput.value = ticker;
+        tickerInput.disabled = true;
+        tickerInput.classList.add('bg-slate-100');
+
+        document.getElementById('modal-shares').value = shares;
+        document.getElementById('modal-cost').value = cost;
+        document.getElementById('modal-holding-fields').classList.remove('hidden');
+    }
+
+    function closeAddModal() {
+        document.getElementById('add-stock-modal').classList.add('hidden');
+    }
+
+    async function submitAddStock() {
+        const ticker = document.getElementById('modal-ticker').value;
+        if (!ticker) return;
+
+        let url = currentPortfolioTab === 'holdings' ? '/api/portfolio/holdings' : '/api/portfolio/watchlist';
+        let method = 'POST';
+
+        if (isEditing) {
+            url = `/api/portfolio/holdings/${ticker}`;
+            method = 'PUT';
+        }
+
+        const body = { ticker: ticker };
+
+        if (currentPortfolioTab === 'holdings' || isEditing) {
+            body.shares = document.getElementById('modal-shares').value;
+            body.cost = document.getElementById('modal-cost').value;
+        }
+
+        try {
+            const res = await fetch(url, {
+                method: method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+            const data = await res.json();
+
+            if (data.status === 'success') {
+                closeAddModal();
+                if (currentPortfolioTab === 'holdings') loadHoldings();
+                else loadWatchlist();
+            } else {
+                alert('Error: ' + data.error);
+            }
+        } catch (e) {
+            console.error(e);
+            alert('Failed to save stock');
+        }
+    }
+
+    async function removeStock(ticker, type) {
+        if (!confirm('Are you sure you want to remove ' + ticker + '?')) return;
+
+        const url = type === 'holdings' ? `/api/portfolio/holdings/${ticker}` : `/api/portfolio/watchlist/${ticker}`;
+
+        try {
+            const res = await fetch(url, { method: 'DELETE' });
+            const data = await res.json();
+
+            if (data.status === 'success') {
+                if (type === 'holdings') loadHoldings();
+                else loadWatchlist();
+            } else {
+                alert('Error: ' + data.error);
+            }
+        } catch (e) {
+            console.error(e);
+            alert('Failed to remove stock');
+        }
+    }
+
+    async function loadHoldings() {
+        const tbody = document.getElementById('holdings-list');
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-slate-400">Loading...</td></tr>';
+
+        try {
+            const res = await fetch('/api/portfolio/holdings');
+            const data = await res.json();
+
+            tbody.innerHTML = '';
+            let totalAssets = 0;
+            let totalGain = 0;
+            let dayGain = 0; // Need day change to calc day gain accurately, using simplified for now
+
+            data.forEach(item => {
+                totalAssets += item.market_value;
+                totalGain += item.gain;
+
+                const gainColor = item.gain >= 0 ? 'text-red-600' : 'text-green-600';
+                const sign = item.gain > 0 ? '+' : '';
+
+                const row = `
+                    <tr>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="flex items-center">
+                                <div>
+                                    <div class="text-sm font-medium text-slate-900 cursor-pointer hover:text-blue-600" onclick="analyzeStock('${item.ticker}'); switchTab('valuation')">${item.name}</div>
+                                    <div class="text-sm text-slate-500">${item.ticker}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm text-slate-500">
+                            <div>${item.shares}</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm text-slate-500">
+                            <div class="font-medium text-slate-900">${item.current_price}</div>
+                            <div class="text-xs text-slate-400">${item.cost}</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium text-slate-900">${item.market_value.toLocaleString()}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium ${gainColor}">${sign}${item.gain.toLocaleString()} (${sign}${item.gain_percent}%)</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium text-slate-500">--</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
+                            <a href="#" class="text-blue-600 hover:text-blue-900 mr-3" onclick="analyzeStock('${item.ticker}'); switchTab('valuation')">分析</a>
+                            <a href="#" class="text-indigo-600 hover:text-indigo-900 mr-3" onclick="openEditModal('${item.ticker}', ${item.shares}, ${item.cost})">编辑</a>
+                            <a href="#" class="text-red-600 hover:text-red-900" onclick="removeStock('${item.ticker}', 'holdings')">删除</a>
+                        </td>
+                    </tr>
+                `;
+                tbody.innerHTML += row;
+            });
+
+            // Update Summary
+            document.getElementById('total-assets').textContent = totalAssets.toLocaleString();
+            document.getElementById('total-gain').textContent = (totalGain > 0 ? '+' : '') + totalGain.toLocaleString();
+
+        } catch (e) {
+            console.error(e);
+            tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-red-400">Failed to load holdings</td></tr>';
+        }
+    }
+
+    async function loadWatchlist() {
+        const tbody = document.getElementById('watchlist-list');
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-slate-400">Loading...</td></tr>';
+
+        try {
+            const res = await fetch('/api/portfolio/watchlist');
+            const data = await res.json();
+
+            tbody.innerHTML = '';
+
+            data.forEach(item => {
+                const changeColor = item.change_percent >= 0 ? 'text-red-600' : 'text-green-600';
+                const sign = item.change_percent > 0 ? '+' : '';
+
+                const row = `
+                    <tr>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="flex items-center">
+                                <div>
+                                    <div class="text-sm font-medium text-slate-900 cursor-pointer hover:text-blue-600" onclick="analyzeStock('${item.ticker}'); switchTab('valuation')">${item.name}</div>
+                                    <div class="text-sm text-slate-500">${item.ticker}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium text-slate-900">${item.price}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm text-slate-500">${item.pe}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm text-slate-500">${(item.dividend_yield * 100).toFixed(2)}%</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium ${changeColor}">${sign}${(item.change_percent * 100).toFixed(2)}%</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
+                            <a href="#" class="text-blue-600 hover:text-blue-900 mr-3" onclick="analyzeStock('${item.ticker}'); switchTab('valuation')">分析</a>
+                            <a href="#" class="text-red-600 hover:text-red-900" onclick="removeStock('${item.ticker}', 'watchlist')">删除</a>
+                        </td>
+                    </tr>
+                `;
+                tbody.innerHTML += row;
+            });
+
+        } catch (e) {
+            console.error(e);
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-red-400">Failed to load watchlist</td></tr>';
+        }
+    }
+
     async function handleSearch(event) {
         if (event.key === 'Enter') {
             const ticker = document.getElementById('search-input').value;

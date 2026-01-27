@@ -1,12 +1,14 @@
 from .selection import StockSelector
 from .valuation import Valuator
 from .analysis import Analyzer
+from .portfolio_manager import PortfolioManager
 
 class InvestmentMaster:
     def __init__(self):
         self.selector = StockSelector()
         self.valuator = Valuator()
         self.analyzer = Analyzer()
+        self.portfolio = PortfolioManager()
 
     def _normalize_ticker(self, ticker):
         """
@@ -25,6 +27,14 @@ class InvestmentMaster:
         elif ticker.startswith(('00', '30')):
             new_ticker = f"{ticker}.SZ"
             print(f"提示: 自动将 {ticker} 转换为 {new_ticker} (深市)")
+            return new_ticker
+        elif ticker.startswith(('5')):
+            new_ticker = f"{ticker}.SS"
+            print(f"提示: 自动将 {ticker} 转换为 {new_ticker} (沪市ETF/基金)")
+            return new_ticker
+        elif ticker.startswith(('15')):
+            new_ticker = f"{ticker}.SZ"
+            print(f"提示: 自动将 {ticker} 转换为 {new_ticker} (深市ETF/基金)")
             return new_ticker
         elif ticker.startswith(('4', '8')):
              # 北交所通常是 .BJ，但 yfinance 支持可能有限，先尝试转换
