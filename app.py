@@ -99,6 +99,10 @@ def analyze_stock(ticker):
         pb_data = master.valuator.calculate_pb_roe(normalized_ticker, info=info)
         pr_data = master.valuator.calculate_pr(normalized_ticker, info=info)
         dcf_data = master.valuator.calculate_dcf(normalized_ticker) # Assuming signature
+        graham_data = master.valuator.calculate_graham(normalized_ticker, info=info)
+        peg_data = master.valuator.calculate_peg(normalized_ticker, info=info)
+        ddm_data = master.valuator.calculate_ddm(normalized_ticker, info=info)
+        tang_data = master.valuator.calculate_tang(normalized_ticker, info=info)
         
         # Determine Name and Translations
         cn_info = get_cn_stock_info(normalized_ticker)
@@ -122,7 +126,11 @@ def analyze_stock(ticker):
             "pe_data": pe_data,
             "pb_data": pb_data,
             "pr_data": pr_data,
-            "dcf_data": dcf_data
+            "dcf_data": dcf_data,
+            "graham_data": graham_data,
+            "peg_data": peg_data,
+            "ddm_data": ddm_data,
+            "tang_data": tang_data
         }
         
         return jsonify(result)

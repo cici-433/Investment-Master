@@ -44,6 +44,236 @@ class Valuator:
             pass
         return None
 
+    def calculate_graham(self, ticker, info=None):
+        """
+        格雷厄姆成长股估值公式 (V = EPS * (8.5 + 2g))
+        """
+        try:
+            if not info:
+                stock = yf.Ticker(ticker)
+                info = stock.info
+            
+            eps = info.get('trailingEps')
+            if not eps:
+                return {"error": "缺少 EPS 数据"}
+            
+            # 获取增长率，如果没有则尝试计算或使用默认保守值
+            # 这里尝试使用 earningsGrowth (季度同比增长) 或 revenueGrowth
+            # 更严谨应该用分析师预估，这里做简化处理
+            g = 0
+            if info.get('earningsGrowth'):
+                g = info.get('earningsGrowth') * 100 # 转换为百分比
+            elif info.get('revenueGrowth'):
+                g = info.get('revenueGrowth') * 100
+            
+            # 限制 g 的范围，防止异常值 (例如亏损转盈导致的巨大增长率)
+            # 格雷厄姆公式通常适用于 0-20% 的稳健增长
+            g = max(0, min(g, 25)) 
+            
+            # 原始公式
+            intrinsic_value = eps * (8.5 + 2 * g)
+            
+            # 修正公式 (考虑利率，当前AAA利率约 4.5% - 5.0%)
+            # V = (EPS * (8.5 + 2g) * 4.4) / Y
+            current_aaa_yield = 4.5 # 假设值
+            intrinsic_value_adj = (eps * (8.5 + 2 * g) * 4.4) / current_aaa_yield
+            
+            return {
+                "eps": eps,
+                "growth_rate": round(g, 2),
+                "intrinsic_value": round(intrinsic_value, 2),
+                "intrinsic_value_adj": round(intrinsic_value_adj, 2),
+                "formula": "V = EPS * (8.5 + 2g)"
+            }
+        except Exception as e:
+            return {"error": f"Graham 计算出错: {e}"}
+
+    def calculate_peg(self, ticker, info=None):
+        """
+        PEG 估值法 (PEG = PE / Growth)
+        """
+        try:
+            if not info:
+                stock = yf.Ticker(ticker)
+                info = stock.info
+                
+            pe = info.get('trailingPE')
+            if not pe:
+                pe = info.get('forwardPE')
+            
+            if not pe:
+                return {"error": "缺少 PE 数据"}
+                
+            # 获取增长率 (优先使用 pegRatio 字段如果存在，否则手动计算)
+            peg = info.get('pegRatio')
+            growth_rate = 0
+            
+            if peg:
+                # 反推 implied growth rate
+                # PEG = PE / g => g = PE / PEG
+                growth_rate = pe / peg
+            else:
+                # 尝试手动获取增长率
+                if info.get('earningsGrowth'):
+                    growth_rate = info.get('earningsGrowth') * 100
+                elif info.get('revenueGrowth'):
+                    growth_rate = info.get('revenueGrowth') * 100
+                
+                # 避免分母为0
+                if growth_rate <= 0:
+                    return {"error": "增长率为负或为零，不适用 PEG", "pe": pe, "growth_rate": growth_rate}
+                    
+                peg = pe / growth_rate
+            
+            result_type = "合理"
+            if peg < 0.8:
+                result_type = "低估 (买入)"
+            elif peg > 1.5:
+                result_type = "高估 (卖出)"
+                
+            return {
+                "pe": round(pe, 2),
+                "growth_rate": round(growth_rate, 2),
+                "peg": round(peg, 2),
+                "result_type": result_type
+            }
+        except Exception as e:
+            return {"error": f"PEG 计算出错: {e}"}
+
+    def calculate_ddm(self, ticker, info=None):
+        """
+        股息贴现模型 (Gordon Growth Model)
+        P = D1 / (r - g)
+        """
+        try:
+            if not info:
+                stock = yf.Ticker(ticker)
+                info = stock.info
+                
+            # 1. 获取股息
+            dividend_rate = info.get('dividendRate') # 年化股息金额
+            if not dividend_rate:
+                 # 尝试用 yield * price 计算
+                 price = info.get('currentPrice') or info.get('previousClose')
+                 d_yield = self._get_best_dividend_yield(info)
+                 if price and d_yield:
+                     dividend_rate = price * d_yield
+            
+            if not dividend_rate:
+                return {"error": "无分红数据，不适用 DDM 模型"}
+                
+            # 2. 假设参数
+            # r: 股权要求回报率 (Cost of Equity)，通常 8% - 12%
+            # g: 股息增长率，通常 2% - 5% (保守估计)
+            r = 0.09 # 9%
+            g = 0.03 # 3%
+            
+            # 如果 g >= r，模型失效 (分母为负)
+            if g >= r:
+                return {"error": "增长率假设过高 (>=回报率)，模型失效"}
+            
+            # D1 = D0 * (1+g)
+            d1 = dividend_rate * (1 + g)
+            
+            intrinsic_value = d1 / (r - g)
+            
+            return {
+                "dividend_rate": round(dividend_rate, 2),
+                "cost_of_equity": r,
+                "growth_rate": g,
+                "intrinsic_value": round(intrinsic_value, 2),
+                "formula": "P = D1 / (r - g)"
+            }
+        except Exception as e:
+            return {"error": f"DDM 计算出错: {e}"}
+
+    def calculate_tang(self, ticker, info=None):
+        """
+        老唐估值法
+        核心逻辑：三年后以 25 倍市盈率卖出能赚 100% (即翻倍) 的位置买入。
+        买点 = (三年后净利润 * 合理PE) / 2
+        如果是高杠杆企业，打七折。
+        """
+        try:
+            if not info:
+                stock = yf.Ticker(ticker)
+                info = stock.info
+            
+            # 1. 获取当前利润 (Net Income)
+            # 使用 trailingEarnings (TTM)
+            net_income = info.get('netIncomeToCommon')
+            if not net_income:
+                # 尝试用 EPS * Shares
+                eps = info.get('trailingEps')
+                shares = info.get('sharesOutstanding')
+                if eps and shares:
+                    net_income = eps * shares
+            
+            if not net_income:
+                 return {"error": "缺少净利润数据"}
+
+            # 2. 预估增长率 (g)
+            # 优先使用 earningsGrowth, 其次 revenueGrowth, 默认 0
+            g = 0
+            if info.get('earningsGrowth'):
+                g = info.get('earningsGrowth')
+            elif info.get('revenueGrowth'):
+                g = info.get('revenueGrowth')
+            
+            # 限制增长率范围，避免过于激进
+            g = max(0, min(g, 0.25)) # 0% - 25%
+
+            # 3. 估算三年后净利润
+            future_profit = net_income * ((1 + g) ** 3)
+            
+            # 4. 合理 PE (默认为 25)
+            rational_pe = 25
+            
+            # 5. 三年后合理市值
+            future_market_cap = future_profit * rational_pe
+            
+            # 6. 买点计算 (三年后合理市值的一半)
+            buy_point_cap = future_market_cap / 2
+            
+            # 7. 高杠杆调整 (打七折)
+            # 判断高杠杆：资产负债率 (Total Debt / Total Assets) > ? 或者 Debt/Equity > ?
+            # 这里简单使用 debtToEquity > 100 (即 1:1) 作为高杠杆警戒线，或者直接查看行业
+            # 更加保守的策略：如果是银行、保险、地产等，通常认为是高杠杆。
+            # 这里实现一个基于 debtToEquity 的动态判断
+            is_high_leverage = False
+            dte = info.get('debtToEquity')
+            if dte and dte > 100:
+                is_high_leverage = True
+                buy_point_cap = buy_point_cap * 0.7
+            
+            # 8. 转换为股价
+            shares = info.get('sharesOutstanding')
+            if not shares:
+                return {"error": "缺少股本数据"}
+                
+            buy_price = buy_point_cap / shares
+            
+            # 9. 卖点计算 (当年 50 倍 PE)
+            # 这里的“当年”指当前 TTM
+            sell_cap = net_income * 50
+            sell_price = sell_cap / shares
+            
+            return {
+                "current_profit": net_income,
+                "growth_rate": g,
+                "future_profit_3y": future_profit,
+                "rational_pe": rational_pe,
+                "future_market_cap": future_market_cap,
+                "buy_price": round(buy_price, 2),
+                "sell_price": round(sell_price, 2),
+                "is_high_leverage": is_high_leverage,
+                "leverage_ratio": dte,
+                "formula": "买点 = (3年后利润 x 25) / 2" + (" x 0.7 (高杠杆)" if is_high_leverage else "")
+            }
+
+        except Exception as e:
+            return {"error": f"老唐估值法计算出错: {e}"}
+
     def _get_best_dividend_yield(self, info):
         """
         尝试获取最准确的股息率。

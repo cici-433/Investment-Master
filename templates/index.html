@@ -259,6 +259,151 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- 4. Graham Formula Card -->
+                <div
+                    class="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden col-span-1 lg:col-span-1">
+                    <div class="p-6 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
+                        <h3 class="font-bold text-slate-800">格雷厄姆成长股公式</h3>
+                        <span class="bg-gray-100 text-gray-800 text-xs px-2 py-1 rounded-full font-bold"
+                            id="graham-badge">--</span>
+                    </div>
+                    <div class="p-6">
+                        <div class="flex justify-between items-center mb-4">
+                            <span class="text-sm text-slate-500">内在价值 (V)</span>
+                            <span class="font-bold text-xl" id="graham-value">--</span>
+                        </div>
+                        <div class="space-y-3 mt-4">
+                            <div class="flex justify-between text-sm">
+                                <span class="text-slate-500">每股收益 (EPS)</span>
+                                <span class="font-mono" id="graham-eps">--</span>
+                            </div>
+                            <div class="flex justify-between text-sm">
+                                <span class="text-slate-500">预期增长率 (g)</span>
+                                <span class="font-mono" id="graham-g">--%</span>
+                            </div>
+                            <div class="flex justify-between text-sm">
+                                <span class="text-slate-500">计算公式</span>
+                                <span class="font-mono text-xs">V = EPS * (8.5 + 2g)</span>
+                            </div>
+                        </div>
+                        <div class="mt-4 text-xs text-slate-400 text-center">
+                            *基于 AAA 债券收益率调整
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 5. PEG Ratio Card -->
+                <div
+                    class="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden col-span-1 lg:col-span-1">
+                    <div class="p-6 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
+                        <h3 class="font-bold text-slate-800">PEG 估值法</h3>
+                        <span class="bg-gray-100 text-gray-800 text-xs px-2 py-1 rounded-full font-bold"
+                            id="peg-badge">--</span>
+                    </div>
+                    <div class="p-6">
+                        <div class="text-center py-4">
+                            <div class="text-5xl font-bold text-blue-600" id="peg-value">--</div>
+                            <div class="text-sm text-slate-500 mt-2">PEG Ratio</div>
+                        </div>
+                        <div class="space-y-3 mt-4">
+                            <div class="flex justify-between text-sm">
+                                <span class="text-slate-500">市盈率 (PE)</span>
+                                <span class="font-mono" id="peg-pe">--</span>
+                            </div>
+                            <div class="flex justify-between text-sm">
+                                <span class="text-slate-500">增长率 (Growth)</span>
+                                <span class="font-mono" id="peg-growth">--%</span>
+                            </div>
+                        </div>
+                        <div class="mt-6 grid grid-cols-3 gap-2 text-center text-xs">
+                            <div class="bg-green-50 text-green-700 p-2 rounded border border-green-200 font-bold">
+                                < 0.8<br>低估
+                            </div>
+                            <div class="bg-gray-50 text-gray-400 p-2 rounded border border-gray-200">
+                                0.8 - 1.5<br>合理
+                            </div>
+                            <div class="bg-red-50 text-red-400 p-2 rounded border border-red-200">
+                                > 1.5<br>高估
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 6. DDM Model Card -->
+                <div
+                    class="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden col-span-1 lg:col-span-1">
+                    <div class="p-6 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
+                        <h3 class="font-bold text-slate-800">DDM 股息贴现</h3>
+                        <span class="bg-gray-100 text-gray-800 text-xs px-2 py-1 rounded-full font-bold"
+                            id="ddm-badge">--</span>
+                    </div>
+                    <div class="p-6">
+                        <div class="flex justify-between items-center mb-4">
+                            <span class="text-sm text-slate-500">合理股价 (P)</span>
+                            <span class="font-bold text-xl" id="ddm-value">--</span>
+                        </div>
+                        <div class="space-y-3 mt-4">
+                            <div class="flex justify-between text-sm">
+                                <span class="text-slate-500">当前股息 (D0)</span>
+                                <span class="font-mono" id="ddm-d0">--</span>
+                            </div>
+                            <div class="flex justify-between text-sm">
+                                <span class="text-slate-500">股权成本 (r)</span>
+                                <span class="font-mono" id="ddm-r">--%</span>
+                            </div>
+                            <div class="flex justify-between text-sm">
+                                <span class="text-slate-500">永续增长 (g)</span>
+                                <span class="font-mono" id="ddm-g">--%</span>
+                            </div>
+                        </div>
+                        <div class="mt-4 text-xs text-slate-400 text-center">
+                            Gordon Growth Model: P = D1 / (r - g)
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 7. Tang's Valuation Card -->
+                <div
+                    class="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden col-span-1 lg:col-span-1">
+                    <div class="p-6 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
+                        <h3 class="font-bold text-slate-800">老唐估值法</h3>
+                        <span class="bg-gray-100 text-gray-800 text-xs px-2 py-1 rounded-full font-bold"
+                            id="tang-badge">--</span>
+                    </div>
+                    <div class="p-6">
+                        <div class="flex justify-between items-center mb-4">
+                            <span class="text-sm text-slate-500">建议买入价</span>
+                            <span class="font-bold text-xl text-green-600" id="tang-buy-price">--</span>
+                        </div>
+                        <div class="flex justify-between items-center mb-4">
+                            <span class="text-sm text-slate-500">建议卖出价</span>
+                            <span class="font-bold text-xl text-red-600" id="tang-sell-price">--</span>
+                        </div>
+
+                        <div class="space-y-3 mt-4">
+                            <div class="flex justify-between text-sm">
+                                <span class="text-slate-500">当前净利润</span>
+                                <span class="font-mono" id="tang-profit">--</span>
+                            </div>
+                            <div class="flex justify-between text-sm">
+                                <span class="text-slate-500">预估增长率 (g)</span>
+                                <span class="font-mono" id="tang-g">--%</span>
+                            </div>
+                            <div class="flex justify-between text-sm">
+                                <span class="text-slate-500">三年后市值</span>
+                                <span class="font-mono" id="tang-future-cap">--</span>
+                            </div>
+                            <div class="flex justify-between text-sm">
+                                <span class="text-slate-500">高杠杆调整</span>
+                                <span class="font-mono" id="tang-leverage">--</span>
+                            </div>
+                        </div>
+                        <div class="mt-4 text-xs text-slate-400 text-center" id="tang-formula">
+                            买点 = (3年后利润 x 25) / 2
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <!-- Details / Terminal Output Style -->
@@ -618,6 +763,122 @@
             } else {
                 document.getElementById('dcf-fair-value').textContent = '计算失败';
                 document.getElementById('dcf-margin').textContent = '--';
+            }
+
+            // Update Graham Card
+            const grahamData = data.graham_data || {};
+            if (!grahamData.error && grahamData.intrinsic_value_adj) {
+                document.getElementById('graham-value').textContent = '¥' + grahamData.intrinsic_value_adj.toFixed(2);
+                document.getElementById('graham-eps').textContent = grahamData.eps.toFixed(2);
+                document.getElementById('graham-g').textContent = grahamData.growth_rate.toFixed(1) + '%';
+
+                let grahamBadge = "持有";
+                let grahamClass = "bg-gray-100 text-gray-800";
+                const currentPrice = data.price;
+                if (currentPrice < grahamData.intrinsic_value_adj * 0.7) {
+                    grahamBadge = "低估";
+                    grahamClass = "bg-green-100 text-green-800";
+                } else if (currentPrice > grahamData.intrinsic_value_adj * 1.3) {
+                    grahamBadge = "高估";
+                    grahamClass = "bg-red-100 text-red-800";
+                }
+                const grahamBadgeEl = document.getElementById('graham-badge');
+                grahamBadgeEl.textContent = grahamBadge;
+                grahamBadgeEl.className = `text-xs px-2 py-1 rounded-full font-bold ${grahamClass}`;
+
+                logArea.innerHTML += `<p class="mt-2">[格雷厄姆公式]</p>`;
+                logArea.innerHTML += `<p class="ml-4">内在价值: ¥${grahamData.intrinsic_value_adj.toFixed(2)} (Growth: ${grahamData.growth_rate}%)</p>`;
+            }
+
+            // Update PEG Card
+            const pegData = data.peg_data || {};
+            if (!pegData.error && pegData.peg) {
+                document.getElementById('peg-value').textContent = pegData.peg.toFixed(2);
+                document.getElementById('peg-pe').textContent = pegData.pe.toFixed(1);
+                document.getElementById('peg-growth').textContent = pegData.growth_rate.toFixed(1) + '%';
+
+                let pegBadge = pegData.result_type;
+                let pegClass = "bg-gray-100 text-gray-800";
+                if (pegData.peg < 0.8) {
+                    pegClass = "bg-green-100 text-green-800";
+                } else if (pegData.peg > 1.5) {
+                    pegClass = "bg-red-100 text-red-800";
+                }
+                const pegBadgeEl = document.getElementById('peg-badge');
+                pegBadgeEl.textContent = pegBadge;
+                pegBadgeEl.className = `text-xs px-2 py-1 rounded-full font-bold ${pegClass}`;
+
+                logArea.innerHTML += `<p class="mt-2">[PEG 估值]</p>`;
+                logArea.innerHTML += `<p class="ml-4">PEG: ${pegData.peg.toFixed(2)} (${pegBadge})</p>`;
+            }
+
+            // Update DDM Card
+            const ddmData = data.ddm_data || {};
+            if (!ddmData.error && ddmData.intrinsic_value) {
+                document.getElementById('ddm-value').textContent = '¥' + ddmData.intrinsic_value.toFixed(2);
+                document.getElementById('ddm-d0').textContent = '¥' + ddmData.dividend_rate.toFixed(2);
+                document.getElementById('ddm-r').textContent = (ddmData.cost_of_equity * 100).toFixed(1) + '%';
+                document.getElementById('ddm-g').textContent = (ddmData.growth_rate * 100).toFixed(1) + '%';
+
+                let ddmBadge = "持有";
+                let ddmClass = "bg-gray-100 text-gray-800";
+                const currentPrice = data.price;
+                if (currentPrice < ddmData.intrinsic_value * 0.8) {
+                    ddmBadge = "低估";
+                    ddmClass = "bg-green-100 text-green-800";
+                } else if (currentPrice > ddmData.intrinsic_value * 1.2) {
+                    ddmBadge = "高估";
+                    ddmClass = "bg-red-100 text-red-800";
+                }
+                const ddmBadgeEl = document.getElementById('ddm-badge');
+                ddmBadgeEl.textContent = ddmBadge;
+                ddmBadgeEl.className = `text-xs px-2 py-1 rounded-full font-bold ${ddmClass}`;
+
+                logArea.innerHTML += `<p class="mt-2">[DDM 模型]</p>`;
+                logArea.innerHTML += `<p class="ml-4">合理价值: ¥${ddmData.intrinsic_value.toFixed(2)}</p>`;
+            }
+
+            // Update Tang Card
+            const tangData = data.tang_data || {};
+            if (!tangData.error && tangData.buy_price) {
+                document.getElementById('tang-buy-price').textContent = '¥' + tangData.buy_price.toFixed(2);
+                document.getElementById('tang-sell-price').textContent = '¥' + tangData.sell_price.toFixed(2);
+                document.getElementById('tang-profit').textContent = (tangData.current_profit / 100000000).toFixed(2) + '亿';
+                document.getElementById('tang-g').textContent = (tangData.growth_rate * 100).toFixed(1) + '%';
+                document.getElementById('tang-future-cap').textContent = (tangData.future_market_cap / 100000000).toFixed(0) + '亿';
+
+                const isHighLev = tangData.is_high_leverage;
+                const levEl = document.getElementById('tang-leverage');
+                if (isHighLev) {
+                    levEl.textContent = "是 (7折)";
+                    levEl.className = "font-mono text-red-500 font-bold";
+                } else {
+                    levEl.textContent = "否";
+                    levEl.className = "font-mono text-slate-500";
+                }
+
+                document.getElementById('tang-formula').textContent = tangData.formula;
+
+                let tangBadge = "观望";
+                let tangClass = "bg-gray-100 text-gray-800";
+                const currentPrice = data.price;
+
+                if (currentPrice < tangData.buy_price) {
+                    tangBadge = "买入机会";
+                    tangClass = "bg-green-100 text-green-800";
+                } else if (currentPrice > tangData.sell_price) {
+                    tangBadge = "建议卖出";
+                    tangClass = "bg-red-100 text-red-800";
+                } else {
+                    tangBadge = "持有/观望";
+                }
+
+                const tangBadgeEl = document.getElementById('tang-badge');
+                tangBadgeEl.textContent = tangBadge;
+                tangBadgeEl.className = `text-xs px-2 py-1 rounded-full font-bold ${tangClass}`;
+
+                logArea.innerHTML += `<p class="mt-2">[老唐估值法]</p>`;
+                logArea.innerHTML += `<p class="ml-4">买点: ¥${tangData.buy_price} (3年后市值50%折扣)</p>`;
             }
 
         } catch (e) {
