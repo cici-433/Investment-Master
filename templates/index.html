@@ -63,7 +63,7 @@
                 </div>
                 <div class="flex items-center">
                     <div class="relative">
-                        <input type="text"
+                        <input type="text" id="search-input" onkeypress="handleSearch(event)"
                             class="w-64 pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                             placeholder="输入代码 (如 600036.SS)..." value="600036.SS">
                         <div class="absolute left-3 top-2.5 text-slate-400">
@@ -87,13 +87,13 @@
             <div class="mb-8">
                 <div class="flex justify-between items-end">
                     <div>
-                        <h1 class="text-3xl font-bold text-slate-900">招商银行 <span
-                                class="text-xl text-slate-500 font-normal ml-2">600036.SS</span></h1>
-                        <p class="text-sm text-slate-500 mt-1">行业: 银行 / 金融服务</p>
+                        <h1 class="text-3xl font-bold text-slate-900"><span id="stock-name">招商银行</span> <span
+                                class="text-xl text-slate-500 font-normal ml-2" id="stock-ticker">600036.SS</span></h1>
+                        <p class="text-sm text-slate-500 mt-1">行业: <span id="stock-industry">银行 / 金融服务</span></p>
                     </div>
                     <div class="text-right">
-                        <div class="text-4xl font-bold text-slate-900">¥32.50</div>
-                        <div class="text-sm text-green-600 font-medium">+1.25 (+3.85%)</div>
+                        <div class="text-4xl font-bold text-slate-900" id="stock-price">¥32.50</div>
+                        <div class="text-sm text-gray-500 font-medium" id="stock-change">--</div>
                     </div>
                 </div>
             </div>
@@ -102,22 +102,22 @@
             <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
                 <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
                     <div class="text-sm text-slate-500">市盈率 (TTM)</div>
-                    <div class="text-2xl font-semibold mt-1">5.30</div>
+                    <div class="text-2xl font-semibold mt-1" id="metric-pe">5.30</div>
                     <div class="text-xs text-green-600 mt-1">↓ 低于行业均值</div>
                 </div>
                 <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
                     <div class="text-sm text-slate-500">市净率 (PB)</div>
-                    <div class="text-2xl font-semibold mt-1">0.85</div>
+                    <div class="text-2xl font-semibold mt-1" id="metric-pb">0.85</div>
                     <div class="text-xs text-green-600 mt-1">↓ 处于历史低位</div>
                 </div>
                 <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
                     <div class="text-sm text-slate-500">ROE (加权)</div>
-                    <div class="text-2xl font-semibold mt-1">15.2%</div>
+                    <div class="text-2xl font-semibold mt-1" id="metric-roe">15.2%</div>
                     <div class="text-xs text-blue-600 mt-1">盈利能力优秀</div>
                 </div>
                 <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
                     <div class="text-sm text-slate-500">股息率</div>
-                    <div class="text-2xl font-semibold mt-1">5.8%</div>
+                    <div class="text-2xl font-semibold mt-1" id="metric-div">--%</div>
                     <div class="text-xs text-orange-600 mt-1">高分红回报</div>
                 </div>
             </div>
@@ -132,16 +132,17 @@
                     class="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden col-span-1 lg:col-span-1">
                     <div class="p-6 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
                         <h3 class="font-bold text-slate-800">PB-ROE 锚定估值</h3>
-                        <span class="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full font-bold">建议买入</span>
+                        <span class="bg-gray-100 text-gray-800 text-xs px-2 py-1 rounded-full font-bold"
+                            id="pb-badge">--</span>
                     </div>
                     <div class="p-6">
                         <div class="flex justify-between items-center mb-4">
                             <span class="text-sm text-slate-500">当前 PB</span>
-                            <span class="font-bold">0.85x</span>
+                            <span class="font-bold" id="pb-current">--x</span>
                         </div>
                         <div class="flex justify-between items-center mb-6">
                             <span class="text-sm text-slate-500">合理 PB (ROE/7)</span>
-                            <span class="font-bold text-blue-600">2.17x</span>
+                            <span class="font-bold text-blue-600" id="pb-target">--x</span>
                         </div>
 
                         <!-- Visual Range Bar -->
@@ -151,27 +152,28 @@
                                 </div>
                             </div>
                             <!-- Markers -->
-                            <div class="absolute top-0 left-[20%] -translate-x-1/2 flex flex-col items-center">
-                                <span class="text-xs font-bold text-green-600">0.85x</span>
+                            <div class="absolute top-0 left-[0%] -translate-x-1/2 flex flex-col items-center transition-all duration-500"
+                                id="pb-marker-current" style="left: 0%;">
+                                <span class="text-xs font-bold text-green-600" id="pb-marker-text">--x</span>
                                 <div class="w-0.5 h-6 bg-slate-800"></div>
                                 <span class="text-[10px] text-slate-500">当前</span>
                             </div>
-                            <div
-                                class="absolute top-0 left-[60%] -translate-x-1/2 flex flex-col items-center opacity-50">
+                            <div class="absolute top-0 left-[50%] -translate-x-1/2 flex flex-col items-center opacity-50"
+                                id="pb-marker-target">
                                 <div class="w-0.5 h-2 bg-slate-400 mt-4"></div>
-                                <span class="text-[10px] text-slate-500">合理(2.17x)</span>
+                                <span class="text-[10px] text-slate-500">合理</span>
                             </div>
                         </div>
 
                         <div class="mt-6 bg-slate-50 rounded-lg p-4 text-sm">
                             <div class="flex justify-between mb-2">
                                 <span class="text-slate-500">买入区间 (<0.8x 合理)</span>
-                                        <span class="font-medium text-green-600">
-                                            < 1.74x</span>
+                                        <span class="font-medium text-green-600" id="pb-buy-range">
+                                            < --x</span>
                             </div>
                             <div class="flex justify-between">
                                 <span class="text-slate-500">卖出区间 (>1.2x 合理)</span>
-                                <span class="font-medium text-red-600">> 2.60x</span>
+                                <span class="font-medium text-red-600" id="pb-sell-range">> --x</span>
                             </div>
                         </div>
                     </div>
@@ -182,22 +184,23 @@
                     class="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden col-span-1 lg:col-span-1">
                     <div class="p-6 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
                         <h3 class="font-bold text-slate-800">市赚率 (PR) 模型</h3>
-                        <span class="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full font-bold">严重低估</span>
+                        <span class="bg-gray-100 text-gray-800 text-xs px-2 py-1 rounded-full font-bold"
+                            id="pr-badge">--</span>
                     </div>
                     <div class="p-6">
                         <div class="text-center py-4">
-                            <div class="text-5xl font-bold text-green-600">0.35</div>
+                            <div class="text-5xl font-bold text-green-600" id="pr-value">--</div>
                             <div class="text-sm text-slate-500 mt-2">PR 值 (越低越好)</div>
                         </div>
 
                         <div class="space-y-3 mt-4">
                             <div class="flex justify-between text-sm">
                                 <span class="text-slate-500">修正系数 N (分红率>50%)</span>
-                                <span class="font-mono">1.0</span>
+                                <span class="font-mono" id="pr-n">--</span>
                             </div>
                             <div class="flex justify-between text-sm">
                                 <span class="text-slate-500">计算公式</span>
-                                <span class="font-mono text-xs">1.0 * (5.3 / 15.2)</span>
+                                <span class="font-mono text-xs" id="pr-formula">--</span>
                             </div>
                         </div>
 
@@ -220,16 +223,17 @@
                     class="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden col-span-1 lg:col-span-1">
                     <div class="p-6 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
                         <h3 class="font-bold text-slate-800">DCF 现金流折现</h3>
-                        <span class="bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded-full font-bold">谨慎参考</span>
+                        <span class="bg-gray-100 text-gray-800 text-xs px-2 py-1 rounded-full font-bold"
+                            id="dcf-badge">--</span>
                     </div>
                     <div class="p-6">
                         <div class="flex justify-between items-center mb-4">
                             <span class="text-sm text-slate-500">理论估值</span>
-                            <span class="font-bold text-xl">¥45.20</span>
+                            <span class="font-bold text-xl" id="dcf-fair-value">--</span>
                         </div>
                         <div class="flex justify-between items-center mb-2 text-sm">
                             <span class="text-slate-500">当前安全边际</span>
-                            <span class="text-green-600 font-bold">+28%</span>
+                            <span class="text-green-600 font-bold" id="dcf-margin">--%</span>
                         </div>
 
                         <div class="mt-4">
@@ -241,21 +245,11 @@
                                         <th class="p-2">现值</th>
                                     </tr>
                                 </thead>
-                                <tbody class="divide-y divide-slate-100">
+                                <tbody class="divide-y divide-slate-100" id="dcf-table-body">
                                     <tr>
-                                        <td class="p-2 text-left text-slate-600">2026</td>
-                                        <td class="p-2">100亿</td>
-                                        <td class="p-2">90亿</td>
-                                    </tr>
-                                    <tr>
-                                        <td class="p-2 text-left text-slate-600">2027</td>
-                                        <td class="p-2">105亿</td>
-                                        <td class="p-2">86亿</td>
-                                    </tr>
-                                    <tr>
-                                        <td class="p-2 text-left text-slate-600">...</td>
-                                        <td class="p-2">...</td>
-                                        <td class="p-2">...</td>
+                                        <td class="p-2 text-left text-slate-600">--</td>
+                                        <td class="p-2">--</td>
+                                        <td class="p-2">--</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -270,15 +264,9 @@
             <!-- Details / Terminal Output Style -->
             <div class="mt-8">
                 <h2 class="text-xl font-bold text-slate-900 mb-4">详细分析日志</h2>
-                <div class="bg-slate-900 text-slate-200 p-6 rounded-xl font-mono text-sm shadow-inner overflow-x-auto">
-                    <p class="text-green-400">$ analyzing 600036.SS...</p>
-                    <p class="mt-2">[PB-ROE 估值法分析]</p>
-                    <p class="ml-4">1. 计算规则说明: 合理 PB = (ROE x 100) / 7</p>
-                    <p class="ml-4">2. 详细计算过程:</p>
-                    <p class="ml-8">- 输入 ROE: 15.20%</p>
-                    <p class="ml-8">- 计算合理 PB: 15.20 / 7 = 2.17x</p>
-                    <p class="ml-8">- 当前实际 PB: 0.85x</p>
-                    <p class="mt-2 text-yellow-300">>>> 结论: 严重低估 (PB 维度)</p>
+                <div class="bg-slate-900 text-slate-200 p-6 rounded-xl font-mono text-sm shadow-inner overflow-x-auto"
+                    id="analysis-log">
+                    <p class="text-slate-500">$ 等待输入股票代码...</p>
                 </div>
             </div>
         </div>
@@ -488,3 +476,160 @@
 </body>
 
 </html>
+<script>
+    async function handleSearch(event) {
+        if (event.key === 'Enter') {
+            const ticker = document.getElementById('search-input').value;
+            if (ticker) {
+                await analyzeStock(ticker);
+            }
+        }
+    }
+
+    async function analyzeStock(ticker) {
+        const logArea = document.getElementById('analysis-log');
+        logArea.innerHTML = `<p class="text-green-400">$ analyzing ${ticker}...</p>`;
+
+        try {
+            const response = await fetch(`/api/analyze/${ticker}`);
+            const data = await response.json();
+
+            if (data.error) {
+                logArea.innerHTML += `<p class="text-red-400">Error: ${data.error}</p>`;
+                return;
+            }
+
+            // Update Header
+            document.getElementById('stock-name').textContent = data.name;
+            document.getElementById('stock-ticker').textContent = data.ticker;
+            document.getElementById('stock-industry').textContent = `${data.sector} / ${data.industry}`;
+            document.getElementById('stock-price').textContent = `¥${data.price}`;
+
+            // Update Metrics
+            const peData = data.pe_data || {};
+            document.getElementById('metric-pe').textContent = peData.trailing_pe ? peData.trailing_pe.toFixed(2) : '--';
+            document.getElementById('metric-pb').textContent = peData.price_to_book ? peData.price_to_book.toFixed(2) : '--';
+            document.getElementById('metric-roe').textContent = peData.return_on_equity ? (peData.return_on_equity * 100).toFixed(1) + '%' : '--';
+            // Dividend yield is not in pe_data, checking if I included it in API... 
+            // I might need to add dividendYield to pe_data in backend or fetch it separately.
+            // For now, leave as -- if not available.
+
+            // Update PB-ROE Card
+            const pbData = data.pb_data || {};
+            if (!pbData.error && pbData.target_pb) {
+                document.getElementById('pb-current').textContent = pbData.current_pb.toFixed(2) + 'x';
+                document.getElementById('pb-target').textContent = pbData.target_pb.toFixed(2) + 'x';
+                document.getElementById('pb-marker-text').textContent = pbData.current_pb.toFixed(2) + 'x';
+
+                // Calculate position: Assume range 0 to 2*Target
+                const maxScale = pbData.target_pb * 2.5;
+                const pct = Math.min((pbData.current_pb / maxScale) * 100, 100);
+                document.getElementById('pb-marker-current').style.left = `${pct}%`;
+
+                document.getElementById('pb-buy-range').textContent = '< ' + pbData.buy_range_pb[1].toFixed(2) + 'x';
+                document.getElementById('pb-sell-range').textContent = '> ' + pbData.sell_range_pb[0].toFixed(2) + 'x';
+
+                let badge = "持有";
+                let badgeClass = "bg-gray-100 text-gray-800";
+                if (pbData.current_pb < pbData.buy_range_pb[1]) {
+                    badge = "建议买入";
+                    badgeClass = "bg-green-100 text-green-800";
+                } else if (pbData.current_pb > pbData.sell_range_pb[0]) {
+                    badge = "建议卖出";
+                    badgeClass = "bg-red-100 text-red-800";
+                }
+                const pbBadge = document.getElementById('pb-badge');
+                pbBadge.textContent = badge;
+                pbBadge.className = `text-xs px-2 py-1 rounded-full font-bold ${badgeClass}`;
+
+                // Log
+                logArea.innerHTML += `<p class="mt-2">[PB-ROE 估值法分析]</p>`;
+                logArea.innerHTML += `<p class="ml-4">1. 计算规则说明: 合理 PB = (ROE x 100) / 7</p>`;
+                logArea.innerHTML += `<p class="ml-4">2. 详细计算过程:</p>`;
+                logArea.innerHTML += `<p class="ml-8">- 输入 ROE: ${(pbData.current_roe * 100).toFixed(2)}%</p>`;
+                logArea.innerHTML += `<p class="ml-8">- 计算合理 PB: ${pbData.target_pb}x</p>`;
+                logArea.innerHTML += `<p class="ml-8">- 当前实际 PB: ${pbData.current_pb.toFixed(2)}x</p>`;
+                logArea.innerHTML += `<p class="mt-2 text-yellow-300">>>> 结论: ${badge} (PB 维度)</p>`;
+            }
+
+            // Update PR Card
+            const prData = data.pr_data || {};
+            if (!prData.error && prData.pr_value) {
+                document.getElementById('pr-value').textContent = prData.pr_value.toFixed(2);
+                document.getElementById('pr-n').textContent = prData.n_factor.toFixed(1);
+                document.getElementById('pr-formula').textContent = `${prData.n_factor} * (${prData.pe.toFixed(1)} / ${(prData.roe * 100).toFixed(1)})`;
+
+                let prBadge = "持有";
+                let prClass = "bg-gray-100 text-gray-800";
+                if (prData.pr_value < 0.6) {
+                    prBadge = "严重低估";
+                    prClass = "bg-green-100 text-green-800";
+                } else if (prData.pr_value > 1.0) {
+                    prBadge = "高估";
+                    prClass = "bg-red-100 text-red-800";
+                }
+                const prBadgeEl = document.getElementById('pr-badge');
+                prBadgeEl.textContent = prBadge;
+                prBadgeEl.className = `text-xs px-2 py-1 rounded-full font-bold ${prClass}`;
+
+                // Log
+                logArea.innerHTML += `<p class="mt-2">[市赚率 (PR) 分析]</p>`;
+                logArea.innerHTML += `<p class="ml-4">PR = ${prData.pr_value.toFixed(2)} (${prBadge})</p>`;
+            }
+
+            // Update DCF Card
+            const dcfData = data.dcf_data || {};
+            if (dcfData && !dcfData.error && dcfData.result) {
+                const fairValue = dcfData.result.fair_value_per_share;
+                document.getElementById('dcf-fair-value').textContent = '¥' + fairValue.toFixed(2);
+
+                const currentPrice = data.price;
+                if (currentPrice) {
+                    const margin = ((fairValue - currentPrice) / fairValue) * 100;
+                    const marginEl = document.getElementById('dcf-margin');
+                    marginEl.textContent = margin.toFixed(1) + '%';
+                    marginEl.className = margin > 0 ? "text-green-600 font-bold" : "text-red-600 font-bold";
+                }
+
+                // Populate Table
+                const tbody = document.getElementById('dcf-table-body');
+                tbody.innerHTML = '';
+                if (dcfData.steps) {
+                    dcfData.steps.slice(0, 5).forEach(step => {
+                        const row = `<tr>
+                                <td class="p-2 text-left text-slate-600">Year ${step.year}</td>
+                                <td class="p-2">${(step.fcf / 100000000).toFixed(2)}亿</td>
+                                <td class="p-2 text-slate-400">${(step.present_value / 100000000).toFixed(2)}亿</td>
+                            </tr>`;
+                        tbody.innerHTML += row;
+                    });
+                }
+
+                // Badge
+                const dcfBadge = document.getElementById('dcf-badge');
+                if (currentPrice < fairValue * 0.7) {
+                    dcfBadge.textContent = "低估";
+                    dcfBadge.className = "bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full font-bold";
+                } else {
+                    dcfBadge.textContent = "参考";
+                    dcfBadge.className = "bg-gray-100 text-gray-800 text-xs px-2 py-1 rounded-full font-bold";
+                }
+
+                logArea.innerHTML += `<p class="mt-2">[DCF 现金流折现]</p>`;
+                logArea.innerHTML += `<p class="ml-4">理论估值: ¥${fairValue.toFixed(2)}</p>`;
+            } else {
+                document.getElementById('dcf-fair-value').textContent = '计算失败';
+                document.getElementById('dcf-margin').textContent = '--';
+            }
+
+        } catch (e) {
+            console.error(e);
+            logArea.innerHTML += `<p class="text-red-400">System Error: ${e.message}</p>`;
+        }
+    }
+
+    // Initial load
+    window.onload = () => {
+        analyzeStock('600036.SS');
+    }
+</script>
