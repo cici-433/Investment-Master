@@ -3,68 +3,101 @@
         {
             "ticker": "002027.SZ",
             "shares": 4700.0,
-            "cost": 6.7784
+            "cost": 6.7784,
+            "group_id": "default"
         },
         {
             "ticker": "600418.SS",
             "shares": 1300.0,
-            "cost": 50.218
+            "cost": 50.218,
+            "group_id": "default"
         },
         {
             "ticker": "513180.SS",
             "shares": 51400.0,
-            "cost": 0.744
+            "cost": 0.744,
+            "group_id": "default"
         },
         {
             "ticker": "513120.SS",
             "shares": 11500.0,
-            "cost": 1.3054
+            "cost": 1.3054,
+            "group_id": "default"
         },
         {
             "ticker": "560280.SS",
             "shares": 3100.0,
-            "cost": 1.6596
+            "cost": 1.6596,
+            "group_id": "default"
         },
         {
             "ticker": "512000.SS",
             "shares": 8700.0,
-            "cost": 0.579
+            "cost": 0.579,
+            "group_id": "default"
         },
         {
             "ticker": "512070.SS",
             "shares": 5400.0,
-            "cost": 0.928
+            "cost": 0.928,
+            "group_id": "default"
         },
         {
             "ticker": "562600.SS",
             "shares": 5500.0,
-            "cost": 0.919
+            "cost": 0.919,
+            "group_id": "default"
         },
         {
             "ticker": "515790.SS",
             "shares": 10500.0,
-            "cost": 0.957
+            "cost": 0.957,
+            "group_id": "default"
         },
         {
             "ticker": "560610.SS",
             "shares": 23800.0,
-            "cost": 0.926
+            "cost": 0.926,
+            "group_id": "default"
         },
         {
             "ticker": "512890.SS",
             "shares": 22800.0,
-            "cost": 1.178
+            "cost": 1.178,
+            "group_id": "150ccad3-ba2f-4ae7-805c-479f1802893b"
         },
         {
             "ticker": "601838.SS",
             "shares": 300.0,
-            "cost": 18.377
+            "cost": 18.377,
+            "group_id": "150ccad3-ba2f-4ae7-805c-479f1802893b"
         },
         {
             "ticker": "600919.SS",
             "shares": 400.0,
-            "cost": 10.472
+            "cost": 10.472,
+            "group_id": "150ccad3-ba2f-4ae7-805c-479f1802893b"
+        },
+        {
+            "ticker": "CASH",
+            "shares": 33981.0,
+            "cost": 33981.0,
+            "group_id": "150ccad3-ba2f-4ae7-805c-479f1802893b"
         }
     ],
-    "watchlist": []
+    "watchlist": [],
+    "groups": [
+        {
+            "id": "default",
+            "name": "默认分组"
+        },
+        {
+            "id": "150ccad3-ba2f-4ae7-805c-479f1802893b",
+            "name": "后卫"
+        },
+        {
+            "id": "363c776e-fee3-415f-a44e-e4ff84f87655",
+            "name": "困境反转"
+        }
+    ]
 }

@@ -15,6 +15,11 @@ class InvestmentMaster:
         标准化股票代码，自动为 A 股代码添加后缀
         """
         ticker = ticker.strip().upper()
+        
+        # 特殊处理：现金
+        if ticker == 'CASH':
+            return ticker
+
         # 如果已经是标准格式（包含点）或不是6位数字，直接返回
         if '.' in ticker or not ticker.isdigit() or len(ticker) != 6:
             return ticker

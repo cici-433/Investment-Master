@@ -77,6 +77,22 @@
             else loadWatchlist();
         }
     </script>
+    <!-- SortableJS for drag and drop -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
+    <style>
+        .sortable-ghost {
+            opacity: 0.4;
+            background-color: #f1f5f9;
+        }
+
+        .sortable-drag {
+            cursor: grabbing;
+        }
+
+        .group-header:hover .group-actions {
+            opacity: 1;
+        }
+    </style>
 </head>
 
 <body class="bg-slate-50 text-slate-800 font-sans min-h-screen">
@@ -622,7 +638,7 @@
                 </nav>
             </div>
 
-            <!-- Holdings Table -->
+            <!-- Holdings Content -->
             <div id="content-holdings">
                 <!-- Summary Card -->
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
@@ -640,37 +656,21 @@
                     </div>
                 </div>
 
-                <div class="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
-                    <table class="min-w-full divide-y divide-slate-200">
-                        <thead class="bg-slate-50">
-                            <tr>
-                                <th
-                                    class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                                    股票</th>
-                                <th
-                                    class="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">
-                                    持仓/可用</th>
-                                <th
-                                    class="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">
-                                    现价/成本</th>
-                                <th
-                                    class="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">
-                                    持仓市值</th>
-                                <th
-                                    class="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">
-                                    持仓盈亏</th>
-                                <th
-                                    class="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">
-                                    当日涨跌</th>
-                                <th
-                                    class="px-6 py-3 text-center text-xs font-medium text-slate-500 uppercase tracking-wider">
-                                    操作</th>
-                            </tr>
-                        </thead>
-                        <tbody class="bg-white divide-y divide-slate-200" id="holdings-list">
-                            <!-- Data will be loaded via JS -->
-                        </tbody>
-                    </table>
+                <!-- Group Actions -->
+                <div class="flex justify-end mb-4">
+                    <button onclick="addNewGroup()"
+                        class="text-sm text-blue-600 hover:text-blue-800 font-medium flex items-center">
+                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                        </svg>
+                        添加分组
+                    </button>
+                </div>
+
+                <!-- Groups Container -->
+                <div id="holdings-groups-container" class="space-y-8">
+                    <!-- Groups will be rendered here -->
                 </div>
             </div>
 
@@ -742,8 +742,22 @@
         <div class="bg-white rounded-xl shadow-lg p-6 w-96">
             <h3 id="modal-title" class="text-xl font-bold mb-4">添加股票</h3>
 
+            <!-- Asset Type Selector -->
+            <div id="asset-type-selector" class="flex space-x-4 mb-4 hidden">
+                <label class="inline-flex items-center">
+                    <input type="radio" name="assetType" value="stock" checked onchange="toggleAssetType()"
+                        class="form-radio text-blue-600">
+                    <span class="ml-2">股票</span>
+                </label>
+                <label class="inline-flex items-center">
+                    <input type="radio" name="assetType" value="cash" onchange="toggleAssetType()"
+                        class="form-radio text-blue-600">
+                    <span class="ml-2">现金</span>
+                </label>
+            </div>
+
             <div class="space-y-4">
-                <div>
+                <div id="field-ticker">
                     <label class="block text-sm font-medium text-slate-700 mb-1">股票代码</label>
                     <input type="text" id="modal-ticker" placeholder="e.g. 600519"
                         class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
@@ -751,11 +765,11 @@
 
                 <div id="modal-holding-fields">
                     <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1">持仓数量</label>
+                        <label id="label-shares" class="block text-sm font-medium text-slate-700 mb-1">持仓数量</label>
                         <input type="number" id="modal-shares" placeholder="100"
                             class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
                     </div>
-                    <div class="mt-4">
+                    <div id="field-cost" class="mt-4">
                         <label class="block text-sm font-medium text-slate-700 mb-1">持仓成本</label>
                         <input type="number" id="modal-cost" step="0.01" placeholder="100.00"
                             class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
@@ -782,7 +796,7 @@
     function openAddModal() {
         isEditing = false;
         document.getElementById('add-stock-modal').classList.remove('hidden');
-        document.getElementById('modal-title').textContent = '添加股票';
+        document.getElementById('modal-title').textContent = '添加资产';
         document.getElementById('modal-ticker').value = '';
         document.getElementById('modal-ticker').disabled = false;
         document.getElementById('modal-ticker').classList.remove('bg-slate-100');
@@ -791,10 +805,29 @@
         document.getElementById('modal-shares').value = '';
         document.getElementById('modal-cost').value = '';
 
+        // Reset type
+        document.querySelector('input[name="assetType"][value="stock"]').checked = true;
+        toggleAssetType();
+
         if (currentPortfolioTab === 'holdings') {
             document.getElementById('modal-holding-fields').classList.remove('hidden');
+            document.getElementById('asset-type-selector').classList.remove('hidden');
         } else {
             document.getElementById('modal-holding-fields').classList.add('hidden');
+            document.getElementById('asset-type-selector').classList.add('hidden');
+        }
+    }
+
+    function toggleAssetType() {
+        const type = document.querySelector('input[name="assetType"]:checked').value;
+        if (type === 'cash') {
+            document.getElementById('field-ticker').classList.add('hidden');
+            document.getElementById('field-cost').classList.add('hidden');
+            document.getElementById('label-shares').textContent = '金额 (元)';
+        } else {
+            document.getElementById('field-ticker').classList.remove('hidden');
+            document.getElementById('field-cost').classList.remove('hidden');
+            document.getElementById('label-shares').textContent = '持仓数量';
         }
     }
 
@@ -802,6 +835,7 @@
         isEditing = true;
         document.getElementById('add-stock-modal').classList.remove('hidden');
         document.getElementById('modal-title').textContent = '编辑持仓';
+        document.getElementById('asset-type-selector').classList.add('hidden'); // No type switch on edit
 
         const tickerInput = document.getElementById('modal-ticker');
         tickerInput.value = ticker;
@@ -811,6 +845,17 @@
         document.getElementById('modal-shares').value = shares;
         document.getElementById('modal-cost').value = cost;
         document.getElementById('modal-holding-fields').classList.remove('hidden');
+
+        // Adjust fields if it is cash
+        if (ticker === 'CASH') {
+            document.getElementById('field-ticker').classList.add('hidden');
+            document.getElementById('field-cost').classList.add('hidden');
+            document.getElementById('label-shares').textContent = '金额 (元)';
+        } else {
+            document.getElementById('field-ticker').classList.remove('hidden');
+            document.getElementById('field-cost').classList.remove('hidden');
+            document.getElementById('label-shares').textContent = '持仓数量';
+        }
     }
 
     function closeAddModal() {
@@ -818,7 +863,16 @@
     }
 
     async function submitAddStock() {
-        const ticker = document.getElementById('modal-ticker').value;
+        let ticker = document.getElementById('modal-ticker').value;
+
+        // Handle Cash Type
+        if (!isEditing && currentPortfolioTab === 'holdings') {
+            const type = document.querySelector('input[name="assetType"]:checked').value;
+            if (type === 'cash') {
+                ticker = 'CASH';
+            }
+        }
+
         if (!ticker) return;
 
         let url = currentPortfolioTab === 'holdings' ? '/api/portfolio/holdings' : '/api/portfolio/watchlist';
@@ -833,7 +887,12 @@
 
         if (currentPortfolioTab === 'holdings' || isEditing) {
             body.shares = document.getElementById('modal-shares').value;
-            body.cost = document.getElementById('modal-cost').value;
+            // For Cash, Cost = Amount (shares)
+            if (ticker === 'CASH') {
+                body.cost = body.shares;
+            } else {
+                body.cost = document.getElementById('modal-cost').value;
+            }
         }
 
         try {
@@ -879,62 +938,251 @@
     }
 
     async function loadHoldings() {
-        const tbody = document.getElementById('holdings-list');
-        tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-slate-400">Loading...</td></tr>';
+        const container = document.getElementById('holdings-groups-container');
+        container.innerHTML = '<div class="text-center py-4 text-slate-400">Loading...</div>';
 
         try {
-            const res = await fetch('/api/portfolio/holdings');
-            const data = await res.json();
+            // Fetch groups and holdings in parallel
+            const [groupsRes, holdingsRes] = await Promise.all([
+                fetch('/api/portfolio/groups'),
+                fetch('/api/portfolio/holdings')
+            ]);
 
-            tbody.innerHTML = '';
+            const groups = await groupsRes.json();
+            const holdings = await holdingsRes.json();
+
+            container.innerHTML = '';
+
             let totalAssets = 0;
             let totalGain = 0;
-            let dayGain = 0; // Need day change to calc day gain accurately, using simplified for now
 
-            data.forEach(item => {
-                totalAssets += item.market_value;
-                totalGain += item.gain;
+            // Group holdings by group_id
+            const holdingsByGroup = {};
+            groups.forEach(g => holdingsByGroup[g.id] = []);
 
-                const gainColor = item.gain >= 0 ? 'text-red-600' : 'text-green-600';
-                const sign = item.gain > 0 ? '+' : '';
+            holdings.forEach(h => {
+                totalAssets += h.market_value;
+                totalGain += h.gain;
 
-                const row = `
-                    <tr>
-                        <td class="px-6 py-4 whitespace-nowrap">
-                            <div class="flex items-center">
-                                <div>
-                                    <div class="text-sm font-medium text-slate-900 cursor-pointer hover:text-blue-600" onclick="analyzeStock('${item.ticker}'); switchTab('valuation')">${item.name}</div>
-                                    <div class="text-sm text-slate-500">${item.ticker}</div>
-                                </div>
-                            </div>
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm text-slate-500">
-                            <div>${item.shares}</div>
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm text-slate-500">
-                            <div class="font-medium text-slate-900">${item.current_price}</div>
-                            <div class="text-xs text-slate-400">${item.cost}</div>
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium text-slate-900">${item.market_value.toLocaleString()}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium ${gainColor}">${sign}${item.gain.toLocaleString()} (${sign}${item.gain_percent}%)</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium text-slate-500">--</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
-                            <a href="#" class="text-blue-600 hover:text-blue-900 mr-3" onclick="analyzeStock('${item.ticker}'); switchTab('valuation')">分析</a>
-                            <a href="#" class="text-indigo-600 hover:text-indigo-900 mr-3" onclick="openEditModal('${item.ticker}', ${item.shares}, ${item.cost})">编辑</a>
-                            <a href="#" class="text-red-600 hover:text-red-900" onclick="removeStock('${item.ticker}', 'holdings')">删除</a>
-                        </td>
-                    </tr>
-                `;
-                tbody.innerHTML += row;
+                const gid = h.group_id || 'default';
+                if (!holdingsByGroup[gid]) holdingsByGroup[gid] = [];
+                holdingsByGroup[gid].push(h);
+            });
+
+            // Render each group
+            groups.forEach(group => {
+                const groupHoldings = holdingsByGroup[group.id] || [];
+                const groupHtml = renderGroup(group, groupHoldings);
+                container.insertAdjacentHTML('beforeend', groupHtml);
+
+                // Initialize Sortable for this group's tbody
+                const tbody = document.getElementById(`group-tbody-${group.id}`);
+                new Sortable(tbody, {
+                    group: 'holdings', // Allow dragging between lists with same group name
+                    animation: 150,
+                    ghostClass: 'sortable-ghost',
+                    dragClass: 'sortable-drag',
+                    handle: '.drag-handle', // Only drag via handle
+                    onEnd: async function (evt) {
+                        const itemEl = evt.item;
+                        const newGroupId = evt.to.getAttribute('data-group-id');
+                        const ticker = itemEl.getAttribute('data-ticker');
+                        
+                        console.log(`Dragging ${ticker} to group ${newGroupId}`);
+                        
+                        // If moved to a different list
+                        if (evt.from !== evt.to) {
+                            console.log('Moving holding...');
+                            await moveHolding(ticker, newGroupId);
+                        } else {
+                            console.log('Same group, skipping move');
+                        }
+                    }
+                });
             });
 
             // Update Summary
-            document.getElementById('total-assets').textContent = totalAssets.toLocaleString();
-            document.getElementById('total-gain').textContent = (totalGain > 0 ? '+' : '') + totalGain.toLocaleString();
+            document.getElementById('total-assets').textContent = totalAssets.toLocaleString('zh-CN', { minimumFractionDigits: 2 });
+            const gainElem = document.getElementById('total-gain');
+            gainElem.textContent = (totalGain > 0 ? '+' : '') + totalGain.toLocaleString('zh-CN', { minimumFractionDigits: 2 });
+            gainElem.className = `text-2xl font-bold mt-1 ${totalGain >= 0 ? 'text-red-500' : 'text-green-500'}`;
 
         } catch (e) {
             console.error(e);
-            tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-red-400">Failed to load holdings</td></tr>';
+            container.innerHTML = '<div class="text-center py-4 text-red-500">Failed to load holdings</div>';
+        }
+    }
+
+    function renderGroup(group, holdings) {
+        const isDefault = group.id === 'default';
+
+        let rowsHtml = '';
+        holdings.forEach(h => {
+            const isUp = h.gain >= 0;
+            const colorClass = isUp ? 'text-red-600' : 'text-green-600';
+            const sign = isUp ? '+' : '';
+
+            // Handle Cash display
+            const isCash = h.ticker === 'CASH';
+
+            rowsHtml += `
+                <tr class="hover:bg-slate-50 transition-colors group/row" data-ticker="${h.ticker}">
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900 flex items-center">
+                        <div class="drag-handle cursor-move text-slate-400 hover:text-slate-600 mr-2" title="Drag to move">
+                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8h16M4 16h16"></path></svg>
+                        </div>
+                        <div class="flex items-center">
+                            <div>
+                                <div class="text-sm font-medium text-slate-900 cursor-pointer hover:text-blue-600" onclick="analyzeStock('${h.ticker}'); switchTab('valuation')">${h.name}</div>
+                                <div class="text-sm text-slate-500">${h.ticker}</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-slate-600">
+                        ${isCash ? '-' : h.shares}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-slate-900">
+                        <div>${h.current_price}</div>
+                        <div class="text-xs text-slate-400 mt-0.5">${h.cost}</div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-right font-medium text-slate-900">
+                        ${h.market_value.toLocaleString()}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-right ${colorClass} font-bold">
+                        ${sign}${h.gain.toLocaleString()}
+                        <div class="text-xs font-normal mt-0.5">${sign}${h.gain_percent}%</div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-slate-900">
+                         --
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-center">
+                        <a href="#" class="text-blue-600 hover:text-blue-900 mr-2 text-xs font-medium" onclick="analyzeStock('${h.ticker}'); switchTab('valuation')">分析</a>
+                        <a href="#" class="text-indigo-600 hover:text-indigo-900 mr-2 text-xs font-medium" onclick="openEditModal('${h.ticker}', '${h.shares}', '${h.cost}')">编辑</a>
+                        <a href="#" class="text-red-600 hover:text-red-900 text-xs font-medium" onclick="removeStock('${h.ticker}', 'holdings')">删除</a>
+                    </td>
+                </tr>
+             `;
+        });
+
+        if (holdings.length === 0) {
+            rowsHtml = `<tr><td colspan="7" class="text-center py-8 text-slate-400 text-sm">暂无持仓，拖拽至此或添加股票</td></tr>`;
+        }
+
+        return `
+            <div class="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden group-container" id="group-${group.id}">
+                <div class="px-6 py-4 bg-slate-50 border-b border-slate-200 flex justify-between items-center group-header">
+                    <div class="flex items-center">
+                        <h3 class="font-bold text-slate-700" id="group-name-${group.id}">${group.name}</h3>
+                        ${!isDefault ? `
+                            <button onclick="editGroupName('${group.id}', '${group.name}')" class="ml-2 text-slate-400 hover:text-blue-600 opacity-0 group-actions transition-opacity">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
+                            </button>
+                        ` : ''}
+                    </div>
+                    ${!isDefault ? `
+                        <button onclick="deleteGroup('${group.id}')" class="text-slate-400 hover:text-red-600 opacity-0 group-actions transition-opacity">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                        </button>
+                    ` : ''}
+                </div>
+                <table class="min-w-full divide-y divide-slate-200">
+                    <thead class="bg-white">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider w-1/4">股票</th>
+                            <th class="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">持仓</th>
+                            <th class="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">现价/成本</th>
+                            <th class="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">市值</th>
+                            <th class="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">盈亏</th>
+                            <th class="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">涨跌</th>
+                            <th class="px-6 py-3 text-center text-xs font-medium text-slate-500 uppercase tracking-wider">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-slate-200 min-h-[50px]" id="group-tbody-${group.id}" data-group-id="${group.id}">
+                        ${rowsHtml}
+                    </tbody>
+                </table>
+            </div>
+        `;
+    }
+
+    async function moveHolding(ticker, targetGroupId) {
+        try {
+            const res = await fetch('/api/portfolio/holdings/move', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ticker: ticker, target_group_id: targetGroupId })
+            });
+            const data = await res.json();
+            if (data.status !== 'success') {
+                alert('Move failed: ' + data.error);
+                loadHoldings(); // Reload to revert UI
+            } else {
+                // Ideally update totals without full reload, but reload is safer for sync
+                loadHoldings();
+            }
+        } catch (e) {
+            console.error(e);
+            alert('Failed to move holding');
+            loadHoldings();
+        }
+    }
+
+    async function addNewGroup() {
+        const name = prompt("请输入新分组名称:");
+        if (!name) return;
+
+        try {
+            const res = await fetch('/api/portfolio/groups', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: name })
+            });
+            const data = await res.json();
+            if (data.status === 'success') {
+                loadHoldings();
+            } else {
+                alert('Error: ' + data.error);
+            }
+        } catch (e) {
+            console.error(e);
+            alert('Failed to add group');
+        }
+    }
+
+    async function editGroupName(groupId, currentName) {
+        const name = prompt("修改分组名称:", currentName);
+        if (!name || name === currentName) return;
+
+        try {
+            const res = await fetch(`/api/portfolio/groups/${groupId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: name })
+            });
+            if (res.ok) {
+                loadHoldings();
+            } else {
+                alert('Failed to rename group');
+            }
+        } catch (e) {
+            console.error(e);
+        }
+    }
+
+    async function deleteGroup(groupId) {
+        if (!confirm("确定要删除该分组吗？分组内的股票将移动到默认分组。")) return;
+
+        try {
+            const res = await fetch(`/api/portfolio/groups/${groupId}`, {
+                method: 'DELETE'
+            });
+            if (res.ok) {
+                loadHoldings();
+            } else {
+                alert('Failed to delete group');
+            }
+        } catch (e) {
+            console.error(e);
         }
     }
 

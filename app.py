@@ -206,6 +206,30 @@ def get_holdings():
         ticker = master._normalize_ticker(raw_ticker)
         
         try:
+            if ticker == 'CASH':
+                current_price = 1.0
+                name = '现金 (CNY)'
+                market_value = h['shares'] # For Cash, shares stores the amount
+                cost_basis = h['cost']
+                # Usually cash gain is 0 unless tracking currency. 
+                # Or user might input cost as original deposit amount and shares as current balance.
+                # Let's assume shares = current balance, cost = original principle.
+                gain = market_value - cost_basis
+                gain_percent = (gain / cost_basis) * 100 if cost_basis > 0 else 0
+                
+                enriched_holdings.append({
+                    "ticker": "CASH",
+                    "name": name,
+                    "shares": h['shares'],
+                    "cost": h['cost'],
+                    "current_price": 1.0,
+                    "market_value": round(market_value, 2),
+                    "gain": round(gain, 2),
+                    "gain_percent": round(gain_percent, 2),
+                    "group_id": h.get("group_id", "default")
+                })
+                continue
+
             current_price = master.valuator.get_current_price(ticker)
             cn_info = get_cn_stock_info(ticker)
             name = cn_info['name'] if cn_info else raw_ticker
@@ -225,7 +249,8 @@ def get_holdings():
                     "current_price": current_price,
                     "market_value": round(market_value, 2),
                     "gain": round(gain, 2),
-                    "gain_percent": round(gain_percent, 2)
+                    "gain_percent": round(gain_percent, 2),
+                    "group_id": h.get("group_id", "default")
                 })
             else:
                 # Price fetch failed
@@ -235,7 +260,8 @@ def get_holdings():
                     "current_price": "N/A",
                     "market_value": 0,
                     "gain": 0,
-                    "gain_percent": 0
+                    "gain_percent": 0,
+                    "group_id": h.get("group_id", "default")
                 })
 
         except Exception as e:
@@ -244,14 +270,54 @@ def get_holdings():
             
     return jsonify(enriched_holdings)
 
+@app.route('/api/portfolio/groups', methods=['GET'])
+def get_groups():
+    return jsonify(master.portfolio.get_groups())
+
+@app.route('/api/portfolio/groups', methods=['POST'])
+def add_group():
+    data = request.json
+    name = data.get('name')
+    if not name:
+        return jsonify({"error": "Name is required"}), 400
+    group_id = master.portfolio.add_group(name)
+    return jsonify({"status": "success", "id": group_id})
+
+@app.route('/api/portfolio/groups/<group_id>', methods=['PUT'])
+def update_group(group_id):
+    data = request.json
+    new_name = data.get('name')
+    if master.portfolio.rename_group(group_id, new_name):
+        return jsonify({"status": "success"})
+    return jsonify({"error": "Failed to rename group"}), 500
+
+@app.route('/api/portfolio/groups/<group_id>', methods=['DELETE'])
+def delete_group(group_id):
+    if master.portfolio.delete_group(group_id):
+        return jsonify({"status": "success"})
+    return jsonify({"error": "Failed to delete group (cannot delete default or not found)"}), 400
+
+@app.route('/api/portfolio/holdings/move', methods=['POST'])
+def move_holding():
+    data = request.json
+    ticker = data.get('ticker')
+    target_group_id = data.get('target_group_id')
+    print(f"DEBUG: Move request - Ticker: {ticker}, Target Group: {target_group_id}")
+    if master.portfolio.move_holding(ticker, target_group_id):
+        print("DEBUG: Move success")
+        return jsonify({"status": "success"})
+    print("DEBUG: Move failed in manager")
+    return jsonify({"error": "Failed to move holding"}), 500
+
 @app.route('/api/portfolio/holdings', methods=['POST'])
 def add_holding():
     data = request.json
     ticker = master._normalize_ticker(data.get('ticker'))
     shares = float(data.get('shares', 0))
     cost = float(data.get('cost', 0))
+    group_id = data.get('group_id', 'default')
     
-    if master.portfolio.add_holding(ticker, shares, cost):
+    if master.portfolio.add_holding(ticker, shares, cost, group_id):
         return jsonify({"status": "success"})
     return jsonify({"error": "Failed to add holding"}), 500
 
@@ -263,8 +329,9 @@ def update_holding(ticker):
     
     shares = float(data.get('shares', 0))
     cost = float(data.get('cost', 0))
+    group_id = data.get('group_id')
     
-    if master.portfolio.add_holding(normalized_ticker, shares, cost):
+    if master.portfolio.add_holding(normalized_ticker, shares, cost, group_id):
         return jsonify({"status": "success"})
     return jsonify({"error": "Failed to update holding"}), 500
 
