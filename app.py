@@ -1,5 +1,6 @@
 from flask import Flask, render_template, jsonify, request
 from investment_master.core import InvestmentMaster
+from investment_master.scraper import ArticleScraper
 import traceback
 import requests
 
@@ -55,13 +56,23 @@ def get_cn_stock_info(ticker):
         
         if response.status_code == 200:
             content = response.text
-            # Format: var hq_str_sh600036="招商银行,..."
+            # Format: var hq_str_sh600036="招商银行,open,pre_close,current,high,low,..."
             if '="' in content:
                 data_str = content.split('="')[1]
                 data_parts = data_str.split(',')
-                if len(data_parts) > 1:
+                if len(data_parts) > 3:
+                    name = data_parts[0]
+                    pre_close = float(data_parts[2])
+                    current = float(data_parts[3])
+                    day_change_percent = 0.0
+                    if pre_close > 0:
+                        day_change_percent = (current - pre_close) / pre_close * 100
+                        
                     return {
-                        "name": data_parts[0]
+                        "name": name,
+                        "current_price": current,
+                        "pre_close": pre_close,
+                        "day_change_percent": day_change_percent
                     }
     except Exception as e:
         print(f"Error fetching CN info for {ticker}: {e}")
@@ -139,59 +150,56 @@ def analyze_stock(ticker):
         traceback.print_exc()
         return jsonify({"error": str(e)}), 500
 
-@app.route('/api/selection', methods=['POST'])
-def run_selection():
-    try:
-        criteria = request.json or {}
-        # Use default criteria if not provided or empty
-        final_criteria = {
-            'min_pe': float(criteria.get('min_pe', 0)),
-            'max_pe': float(criteria.get('max_pe', 50)),
-            'min_roe': float(criteria.get('min_roe', 15))
-        }
-        
-        # For demo purposes, we might want to scan a fixed list or let user provide tickers
-        # Since scanning all stocks is slow, let's use a sample list if not provided
-        sample_tickers = ["600519.SS", "600036.SS", "000858.SZ", "000651.SZ", "601318.SS", "002594.SZ"]
-        
-        # In a real app, we would have a database. Here we scan the sample list.
-        results = master.selector.select(final_criteria, sample_tickers)
-        
-        return jsonify({"results": results})
-        
-    except Exception as e:
-        traceback.print_exc()
-        return jsonify({"error": str(e)}), 500
+@app.route('/api/system/articles', methods=['GET'])
+def get_articles():
+    return jsonify(master.system_manager.get_articles())
 
-@app.route('/api/market_status')
-def market_status():
-    """
-    Returns simulated sector performance data for the heatmap
-    """
-    import random
+@app.route('/api/system/articles', methods=['POST'])
+def add_article():
+    data = request.json
+    title = data.get('title')
+    author = data.get('author')
+    content = data.get('content')
+    tags = data.get('tags') # List of strings
     
-    sectors = [
-        {"name": "银行", "change": 2.45, "heat": 0.8},
-        {"name": "家用电器", "change": 1.82, "heat": 0.7},
-        {"name": "食品饮料", "change": 1.25, "heat": 0.6},
-        {"name": "煤炭", "change": 0.85, "heat": 0.5},
-        {"name": "公用事业", "change": 0.52, "heat": 0.4},
-        {"name": "交通运输", "change": -0.15, "heat": -0.1},
-        {"name": "医药生物", "change": -0.45, "heat": -0.3},
-        {"name": "电子", "change": -0.88, "heat": -0.5},
-        {"name": "房地产", "change": -1.25, "heat": -0.7},
-        {"name": "计算机", "change": -2.10, "heat": -0.9}
-    ]
+    if not title:
+        return jsonify({"error": "Title is required"}), 400
+        
+    article = master.system_manager.add_article(title, author, content, tags)
+    return jsonify({"status": "success", "article": article})
+
+@app.route('/api/system/scrape', methods=['POST'])
+def scrape_article():
+    data = request.json
+    url = data.get('url')
+    if not url:
+        return jsonify({"error": "URL is required"}), 400
     
-    # Optional: Randomize slightly for dynamic effect
-    for s in sectors:
-        noise = random.uniform(-0.2, 0.2)
-        s["change"] = round(s["change"] + noise, 2)
+    scraper = ArticleScraper()
+    result = scraper.scrape(url)
     
-    # Sort by change descending
-    sectors.sort(key=lambda x: x["change"], reverse=True)
+    if "error" in result:
+        return jsonify({"error": result["error"]}), 500
+        
+    return jsonify(result)
+
+@app.route('/api/system/articles/<article_id>', methods=['PUT'])
+def update_article(article_id):
+    data = request.json
+    title = data.get('title')
+    author = data.get('author')
+    content = data.get('content')
+    tags = data.get('tags')
     
-    return jsonify({"sectors": sectors})
+    if master.system_manager.update_article(article_id, title, author, content, tags):
+        return jsonify({"status": "success"})
+    return jsonify({"error": "Failed to update article"}), 500
+
+@app.route('/api/system/articles/<article_id>', methods=['DELETE'])
+def delete_article(article_id):
+    if master.system_manager.delete_article(article_id):
+        return jsonify({"status": "success"})
+    return jsonify({"error": "Failed to delete article"}), 500
 
 # --- Portfolio API ---
 
@@ -226,14 +234,29 @@ def get_holdings():
                     "market_value": round(market_value, 2),
                     "gain": round(gain, 2),
                     "gain_percent": round(gain_percent, 2),
+                    "day_change_percent": 0,
                     "group_id": h.get("group_id", "default"),
                     "note": h.get("note", "")
                 })
                 continue
 
-            current_price = master.valuator.get_current_price(ticker)
+            # Try to get info from Sina first (faster for A-shares)
             cn_info = get_cn_stock_info(ticker)
-            name = cn_info['name'] if cn_info else raw_ticker
+            day_change_percent = 0
+            
+            if cn_info:
+                name = cn_info['name']
+                current_price = cn_info.get('current_price')
+                day_change_percent = cn_info.get('day_change_percent', 0)
+                # Fallback to yfinance if Sina price is 0 (suspended or error)
+                if current_price == 0:
+                     current_price = master.valuator.get_current_price(ticker)
+                     # Recalculate change percent if we have pre_close
+                     if current_price and cn_info.get('pre_close') and cn_info['pre_close'] > 0:
+                         day_change_percent = (current_price - cn_info['pre_close']) / cn_info['pre_close'] * 100
+            else:
+                name = raw_ticker
+                current_price = master.valuator.get_current_price(ticker)
             
             if current_price is not None:
                 # Calculate market value and gain
@@ -242,6 +265,15 @@ def get_holdings():
                 gain = market_value - cost_basis
                 gain_percent = (gain / cost_basis) * 100 if cost_basis > 0 else 0
                 
+                # Calculate Day Gain
+                day_gain = 0
+                if cn_info and cn_info.get('pre_close'):
+                     day_gain = (current_price - cn_info['pre_close']) * h['shares']
+                elif day_change_percent != 0:
+                     # Estimate if we only have percent (fallback)
+                     pre_c = current_price / (1 + day_change_percent/100)
+                     day_gain = (current_price - pre_c) * h['shares']
+
                 enriched_holdings.append({
                     "ticker": raw_ticker, # Keep original ticker for display/id consistency
                     "name": name,
@@ -251,6 +283,8 @@ def get_holdings():
                     "market_value": round(market_value, 2),
                     "gain": round(gain, 2),
                     "gain_percent": round(gain_percent, 2),
+                    "day_change_percent": round(day_change_percent, 2),
+                    "day_gain": round(day_gain, 2),
                     "group_id": h.get("group_id", "default"),
                     "note": h.get("note", "")
                 })
@@ -363,6 +397,11 @@ def get_watchlist():
             # Safe access to pe_data which might be None
             if pe_data is None:
                 pe_data = {}
+            
+            # Determine change percent (prioritize Sina)
+            change_percent = pe_data.get('change_percent', 0)
+            if cn_info and 'day_change_percent' in cn_info:
+                change_percent = cn_info['day_change_percent']
 
             enriched_watchlist.append({
                 "ticker": raw_ticker,
@@ -370,7 +409,7 @@ def get_watchlist():
                 "price": current_price if current_price is not None else "N/A",
                 "pe": pe_data.get('trailing_pe', '--'),
                 "dividend_yield": pe_data.get('dividend_yield', 0),
-                "change_percent": pe_data.get('change_percent', 0)
+                "change_percent": round(change_percent, 2)
             })
         except Exception as e:
             print(f"Error enriching watchlist {raw_ticker}: {e}")

@@ -3,3 +3,6 @@ numpy
 yfinance
 matplotlib
 flask
+playwright
+beautifulsoup4
+requests

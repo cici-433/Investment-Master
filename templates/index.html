@@ -7,6 +7,7 @@
     <title>Investment Master - 智能投资分析平台</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <style>
         .glass-panel {
             background: rgba(255, 255, 255, 0.95);
@@ -19,20 +20,119 @@
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
         }
+
+        /* Markdown Styles */
+        .markdown-content h1 {
+            font-size: 1.8em;
+            font-weight: 800;
+            margin-top: 1.5em;
+            margin-bottom: 0.8em;
+            color: #1e293b;
+        }
+
+        .markdown-content h2 {
+            font-size: 1.5em;
+            font-weight: 700;
+            margin-top: 1.2em;
+            margin-bottom: 0.6em;
+            color: #334155;
+        }
+
+        .markdown-content h3 {
+            font-size: 1.25em;
+            font-weight: 600;
+            margin-top: 1em;
+            margin-bottom: 0.5em;
+            color: #475569;
+        }
+
+        .markdown-content p {
+            margin-bottom: 1.2em;
+            line-height: 1.75;
+            color: #334155;
+        }
+
+        .markdown-content ul {
+            list-style-type: disc;
+            padding-left: 1.5em;
+            margin-bottom: 1.2em;
+        }
+
+        .markdown-content ol {
+            list-style-type: decimal;
+            padding-left: 1.5em;
+            margin-bottom: 1.2em;
+        }
+
+        .markdown-content li {
+            margin-bottom: 0.5em;
+        }
+
+        .markdown-content blockquote {
+            border-left: 4px solid #3b82f6;
+            padding-left: 1em;
+            color: #64748b;
+            margin-bottom: 1.2em;
+            background-color: #eff6ff;
+            padding: 1rem;
+            border-radius: 0 0.5rem 0.5rem 0;
+        }
+
+        .markdown-content img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 0.5rem;
+            margin: 1.5em auto;
+            display: block;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        .markdown-content pre {
+            background-color: #f1f5f9;
+            padding: 1em;
+            border-radius: 0.5rem;
+            overflow-x: auto;
+            margin-bottom: 1.2em;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+        }
+
+        .markdown-content code {
+            background-color: #f1f5f9;
+            padding: 0.2em 0.4em;
+            border-radius: 0.25rem;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+            color: #ef4444;
+            font-size: 0.9em;
+        }
+
+        .markdown-content a {
+            color: #2563eb;
+            text-decoration: underline;
+            text-underline-offset: 4px;
+        }
+
+        .markdown-content a:hover {
+            color: #1d4ed8;
+        }
+
+        .markdown-content strong {
+            color: #1e293b;
+            font-weight: 700;
+        }
     </style>
     <script>
         function switchTab(tabId) {
             // Hide all views
             document.getElementById('view-valuation').classList.add('hidden');
             document.getElementById('view-portfolio').classList.add('hidden');
-            document.getElementById('view-selection').classList.add('hidden');
-            document.getElementById('view-analysis').classList.add('hidden');
+            const viewSystem = document.getElementById('view-system');
+            if (viewSystem) viewSystem.classList.add('hidden');
 
             // Show selected view
             document.getElementById('view-' + tabId).classList.remove('hidden');
 
             // Reset nav styles
-            const navs = ['valuation', 'portfolio', 'selection', 'analysis'];
+            const navs = ['valuation', 'portfolio', 'system'];
             navs.forEach(nav => {
                 const el = document.getElementById('nav-' + nav);
                 if (nav === tabId) {
@@ -43,8 +143,8 @@
             });
 
             // Trigger specific view logic
-            if (tabId === 'analysis') {
-                loadMarketData();
+            if (tabId === 'system') {
+                loadArticles();
             } else if (tabId === 'portfolio') {
                 if (currentPortfolioTab === 'holdings') loadHoldings();
                 else loadWatchlist();
@@ -108,10 +208,8 @@
                             class="bg-blue-50 text-blue-700 px-3 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer">个股估值</a>
                         <a id="nav-portfolio" onclick="switchTab('portfolio')"
                             class="text-slate-500 hover:text-slate-900 px-3 py-2 rounded-md text-sm font-medium transition-colors hover:bg-slate-50 cursor-pointer">我的持仓</a>
-                        <a id="nav-selection" onclick="switchTab('selection')"
-                            class="text-slate-500 hover:text-slate-900 px-3 py-2 rounded-md text-sm font-medium transition-colors hover:bg-slate-50 cursor-pointer">选股策略</a>
-                        <a id="nav-analysis" onclick="switchTab('analysis')"
-                            class="text-slate-500 hover:text-slate-900 px-3 py-2 rounded-md text-sm font-medium transition-colors hover:bg-slate-50 cursor-pointer">行业分析</a>
+                        <a id="nav-system" onclick="switchTab('system')"
+                            class="text-slate-500 hover:text-slate-900 px-3 py-2 rounded-md text-sm font-medium transition-colors hover:bg-slate-50 cursor-pointer">投资体系</a>
                     </div>
                 </div>
                 <div class="flex items-center">
@@ -485,131 +583,7 @@
             </div>
         </div>
 
-        <!-- 2. Stock Selection View -->
-        <div id="view-selection" class="hidden">
-            <div class="mb-8">
-                <h1 class="text-3xl font-bold text-slate-900">智能选股策略</h1>
-                <p class="text-sm text-slate-500 mt-1">基于价值投资理念的多因子筛选模型</p>
-            </div>
 
-            <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
-                <!-- Filter Sidebar -->
-                <div class="lg:col-span-1 space-y-6">
-                    <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
-                        <h3 class="font-bold text-slate-800 mb-4">筛选条件</h3>
-
-                        <div class="mb-4">
-                            <label class="block text-sm font-medium text-slate-700 mb-1">市盈率 (PE-TTM)</label>
-                            <div class="flex items-center space-x-2">
-                                <input type="number" value="0" class="w-20 px-2 py-1 border rounded text-sm">
-                                <span class="text-slate-400">-</span>
-                                <input type="number" value="20" class="w-20 px-2 py-1 border rounded text-sm">
-                            </div>
-                        </div>
-
-                        <div class="mb-4">
-                            <label class="block text-sm font-medium text-slate-700 mb-1">ROE (加权)</label>
-                            <div class="flex items-center space-x-2">
-                                <span class="text-sm text-slate-500">></span>
-                                <input type="number" value="15" class="w-full px-2 py-1 border rounded text-sm">
-                                <span class="text-sm text-slate-500">%</span>
-                            </div>
-                        </div>
-
-                        <div class="mb-6">
-                            <label class="block text-sm font-medium text-slate-700 mb-1">股息率</label>
-                            <div class="flex items-center space-x-2">
-                                <span class="text-sm text-slate-500">></span>
-                                <input type="number" value="3" class="w-full px-2 py-1 border rounded text-sm">
-                                <span class="text-sm text-slate-500">%</span>
-                            </div>
-                        </div>
-
-                        <button
-                            class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition-colors">
-                            执行筛选
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Results Table -->
-                <div class="lg:col-span-3">
-                    <div class="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
-                        <table class="min-w-full divide-y divide-slate-200">
-                            <thead class="bg-slate-50">
-                                <tr>
-                                    <th
-                                        class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                                        代码</th>
-                                    <th
-                                        class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                                        名称</th>
-                                    <th
-                                        class="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">
-                                        PE</th>
-                                    <th
-                                        class="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">
-                                        ROE</th>
-                                    <th
-                                        class="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">
-                                        股息率</th>
-                                    <th
-                                        class="px-6 py-3 text-center text-xs font-medium text-slate-500 uppercase tracking-wider">
-                                        评分</th>
-                                </tr>
-                            </thead>
-                            <tbody class="bg-white divide-y divide-slate-200">
-                                <tr class="hover:bg-slate-50 transition-colors">
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">
-                                        600036.SS</td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-600">招商银行</td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-slate-900">5.30
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-green-600 font-bold">
-                                        15.2%</td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-slate-900">5.8%
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-center">
-                                        <span
-                                            class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">92</span>
-                                    </td>
-                                </tr>
-                                <tr class="hover:bg-slate-50 transition-colors">
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">
-                                        600519.SS</td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-600">贵州茅台</td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-slate-900">22.5
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-green-600 font-bold">
-                                        28.4%</td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-slate-900">2.1%
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-center">
-                                        <span
-                                            class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">88</span>
-                                    </td>
-                                </tr>
-                                <tr class="hover:bg-slate-50 transition-colors">
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">
-                                        000651.SZ</td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-600">格力电器</td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-slate-900">7.2
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-green-600 font-bold">
-                                        18.5%</td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-slate-900">6.5%
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-center">
-                                        <span
-                                            class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">90</span>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        </div>
 
         <!-- 4. Portfolio View -->
         <div id="view-portfolio" class="hidden">
@@ -652,7 +626,7 @@
                     </div>
                     <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
                         <div class="text-sm text-slate-500">当日盈亏</div>
-                        <div class="text-2xl font-bold text-slate-900 mt-1">--</div>
+                        <div class="text-2xl font-bold text-slate-900 mt-1" id="total-day-gain">--</div>
                     </div>
                 </div>
 
@@ -708,28 +682,103 @@
             </div>
         </div>
 
-        <!-- 3. Industry Analysis View -->
-        <div id="view-analysis" class="hidden">
-            <div class="mb-8">
-                <h1 class="text-3xl font-bold text-slate-900">行业分析</h1>
-                <p class="text-sm text-slate-500 mt-1">市场热点与板块轮动监测</p>
+        <!-- 3. Investment System View -->
+        <div id="view-system" class="hidden">
+            <div class="mb-8 flex justify-between items-center">
+                <div>
+                    <h1 class="text-3xl font-bold text-slate-900">投资体系</h1>
+                    <p class="text-sm text-slate-500 mt-1">记录与学习投资大师的智慧</p>
+                </div>
+                <button onclick="openArticleModal()"
+                    class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors shadow-sm">
+                    + 新增文章
+                </button>
             </div>
 
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                <!-- Market Map (Placeholder) -->
-                <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
-                    <h3 class="font-bold text-slate-800 mb-4">板块涨跌幅热力图</h3>
-                    <div class="aspect-video bg-white rounded-lg p-2 relative">
-                        <canvas id="sectorChart"></canvas>
+            <!-- Articles Grid -->
+            <div id="articles-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- Articles will be loaded here -->
+                <div class="col-span-full text-center py-12 text-slate-400">
+                    加载中...
+                </div>
+            </div>
+        </div>
+
+        <!-- Article Editor Modal -->
+        <div id="article-modal"
+            class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center">
+            <div class="bg-white rounded-xl shadow-lg p-6 w-[800px] max-h-[90vh] overflow-y-auto">
+                <h3 id="article-modal-title" class="text-xl font-bold mb-4">新增文章</h3>
+                <input type="hidden" id="article-id">
+
+                <!-- Import URL Section -->
+                <div class="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-100">
+                    <label class="block text-sm font-medium text-blue-700 mb-2">从网址导入 (自动抓取)</label>
+                    <div class="flex space-x-2">
+                        <input type="text" id="import-url" placeholder="粘贴文章链接 (如雪球、微信公众号)"
+                            class="flex-1 border border-blue-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm">
+                        <button onclick="importFromUrl()" id="btn-import"
+                            class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors flex items-center">
+                            <span id="import-loading" class="hidden animate-spin mr-2">⟳</span>
+                            导入
+                        </button>
                     </div>
                 </div>
 
-                <!-- Top Sectors -->
-                <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
-                    <h3 class="font-bold text-slate-800 mb-4">领涨行业 (Top 5)</h3>
-                    <div class="space-y-4" id="top-sectors-list">
-                        <!-- Content will be loaded dynamically -->
-                        <div class="text-center text-slate-400 py-4">Loading...</div>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">标题</label>
+                        <input type="text" id="article-title"
+                            class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">作者/来源</label>
+                        <input type="text" id="article-author"
+                            class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">标签 (逗号分隔)</label>
+                        <input type="text" id="article-tags" placeholder="如: 价值投资, 巴菲特, 银行股"
+                            class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">内容</label>
+                        <textarea id="article-content" rows="15"
+                            class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none font-mono text-sm"></textarea>
+                    </div>
+                </div>
+
+                <div class="mt-6 flex justify-end space-x-3">
+                    <button onclick="closeArticleModal()"
+                        class="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">取消</button>
+                    <button onclick="saveArticle()"
+                        class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">保存</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Article Reader Modal -->
+        <div id="reader-modal"
+            class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center">
+            <div class="bg-white rounded-xl shadow-lg w-[900px] max-h-[90vh] relative flex flex-col">
+                <button onclick="closeReaderModal()"
+                    class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 z-10 bg-white/80 backdrop-blur-sm rounded-full p-1 transition-colors">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12">
+                        </path>
+                    </svg>
+                </button>
+
+                <div class="overflow-y-auto p-8 flex-1">
+                    <h2 id="reader-title" class="text-2xl font-bold text-slate-900 mb-2"></h2>
+                    <div class="flex items-center space-x-4 text-sm text-slate-500 mb-6">
+                        <span id="reader-author" class="font-medium text-slate-700"></span>
+                        <span id="reader-date"></span>
+                        <div id="reader-tags" class="flex space-x-2"></div>
+                    </div>
+
+                    <div id="reader-content"
+                        class="prose max-w-none text-slate-800 whitespace-pre-wrap leading-relaxed">
                     </div>
                 </div>
             </div>
@@ -964,6 +1013,7 @@
 
             let totalAssets = 0;
             let totalGain = 0;
+            let totalDayGain = 0;
 
             // Group holdings by group_id
             const holdingsByGroup = {};
@@ -972,6 +1022,7 @@
             holdings.forEach(h => {
                 totalAssets += h.market_value;
                 totalGain += h.gain;
+                totalDayGain += (h.day_gain || 0);
 
                 const gid = h.group_id || 'default';
                 if (!holdingsByGroup[gid]) holdingsByGroup[gid] = [];
@@ -1016,6 +1067,10 @@
             gainElem.textContent = (totalGain > 0 ? '+' : '') + totalGain.toLocaleString('zh-CN', { minimumFractionDigits: 2 });
             gainElem.className = `text-2xl font-bold mt-1 ${totalGain >= 0 ? 'text-red-500' : 'text-green-500'}`;
 
+            const dayGainElem = document.getElementById('total-day-gain');
+            dayGainElem.textContent = (totalDayGain > 0 ? '+' : '') + totalDayGain.toLocaleString('zh-CN', { minimumFractionDigits: 2 });
+            dayGainElem.className = `text-2xl font-bold mt-1 ${totalDayGain >= 0 ? 'text-red-500' : 'text-green-500'}`;
+
         } catch (e) {
             console.error(e);
             container.innerHTML = '<div class="text-center py-4 text-red-500">Failed to load holdings</div>';
@@ -1047,6 +1102,14 @@
             const colorClass = isUp ? 'text-red-600' : 'text-green-600';
             const sign = isUp ? '+' : '';
             const weight = totalAssets > 0 ? (h.market_value / totalAssets * 100).toFixed(2) : '0.00';
+
+            // Daily Change
+            const dayChange = h.day_change_percent || 0;
+            const dayChangeSign = dayChange > 0 ? '+' : '';
+            const dayChangeClass = dayChange > 0 ? 'text-red-600' : (dayChange < 0 ? 'text-green-600' : 'text-slate-900');
+
+            const dayGain = h.day_gain || 0;
+            const dayGainSign = dayGain > 0 ? '+' : '';
 
             // Handle Cash display
             const isCash = h.ticker === 'CASH';
@@ -1081,8 +1144,9 @@
                         ${sign}${h.gain.toLocaleString()}
                         <div class="text-xs font-normal mt-0.5">${sign}${h.gain_percent}%</div>
                     </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-slate-900">
-                         --
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-right ${dayChangeClass} font-medium">
+                        <div>${dayGainSign}${dayGain.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                        <div class="text-xs font-normal mt-0.5">${dayChangeSign}${dayChange}%</div>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500 truncate max-w-xs cursor-pointer hover:bg-slate-100" title="${h.note || ''}" onclick="toggleNote(this)">
                         ${h.note || ''}
@@ -1118,24 +1182,26 @@
                         </button>
                     ` : ''}
                 </div>
-                <table class="min-w-full divide-y divide-slate-200">
-                    <thead class="bg-white">
-                        <tr>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider w-1/4">股票</th>
-                            <th class="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">持仓</th>
-                            <th class="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">现价/成本</th>
-                            <th class="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">市值</th>
-                            <th class="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">占比</th>
-                            <th class="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">盈亏</th>
-                            <th class="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">涨跌</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">备注</th>
-                            <th class="px-6 py-3 text-center text-xs font-medium text-slate-500 uppercase tracking-wider">操作</th>
-                        </tr>
-                    </thead>
-                    <tbody class="bg-white divide-y divide-slate-200 min-h-[50px]" id="group-tbody-${group.id}" data-group-id="${group.id}">
-                        ${rowsHtml}
-                    </tbody>
-                </table>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-slate-200">
+                        <thead class="bg-white">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider w-1/4">股票</th>
+                                <th class="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">持仓</th>
+                                <th class="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">现价/成本</th>
+                                <th class="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">市值</th>
+                                <th class="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">占比</th>
+                                <th class="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">盈亏</th>
+                                <th class="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">涨跌</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">备注</th>
+                                <th class="px-6 py-3 text-center text-xs font-medium text-slate-500 uppercase tracking-wider">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-slate-200 min-h-[50px]" id="group-tbody-${group.id}" data-group-id="${group.id}">
+                            ${rowsHtml}
+                        </tbody>
+                    </table>
+                </div>
             </div>
         `;
     }
@@ -1533,112 +1599,235 @@
         }
     }
 
-    let marketChart = null;
+    // --- Investment System Logic ---
 
-    async function loadMarketData() {
+    async function loadArticles() {
+        console.log("loadArticles called");
+        const grid = document.getElementById('articles-grid');
+        if (!grid) {
+            console.error("articles-grid element not found");
+            return;
+        }
+        grid.innerHTML = '<div class="col-span-full text-center py-12 text-slate-400">加载中...</div>';
+
         try {
-            const response = await fetch('/api/market_status');
-            const data = await response.json();
+            const res = await fetch('/api/system/articles');
+            const data = await res.json();
+            console.log("Articles loaded:", data);
 
-            if (data.sectors) {
-                renderSectorChart(data.sectors);
-                renderTopSectors(data.sectors);
+            // Handle both array (direct list) and object ({articles: [...]}) formats
+            const articles = Array.isArray(data) ? data : (data.articles || []);
+
+            if (articles.length > 0) {
+                // Sort by date desc
+                articles.sort((a, b) => b.created_at - a.created_at);
+
+                const cardsHtml = articles.map(article => {
+                    const dateStr = new Date(article.created_at * 1000).toLocaleDateString();
+                    const tagsHtml = article.tags.map(tag =>
+                        `<span class="bg-blue-50 text-blue-600 text-xs px-2 py-1 rounded-full">${tag}</span>`
+                    ).join('');
+
+                    const safeId = article.id.replace(/'/g, "\\'");
+
+                    return `
+                        <div class="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden hover:shadow-md transition-shadow cursor-pointer group" onclick="openReaderModal('${safeId}')">
+                            <div class="p-6">
+                                <div class="flex justify-between items-start mb-4">
+                                    <div class="flex space-x-2">
+                                        ${tagsHtml}
+                                    </div>
+                                    <span class="text-xs text-slate-400">${dateStr}</span>
+                                </div>
+                                <h3 class="text-xl font-bold text-slate-800 mb-2 group-hover:text-blue-600 transition-colors line-clamp-2">${article.title}</h3>
+                                <p class="text-sm text-slate-500 mb-4">By ${article.author}</p>
+                                <p class="text-slate-600 text-sm line-clamp-3 mb-6">${article.content}</p>
+                                
+                                <div class="flex justify-end pt-4 border-t border-slate-50 space-x-3" onclick="event.stopPropagation()">
+                                    <button onclick="openArticleModal('${safeId}')" class="text-slate-400 hover:text-blue-600 text-sm font-medium">编辑</button>
+                                    <button onclick="deleteArticle('${safeId}')" class="text-slate-400 hover:text-red-600 text-sm font-medium">删除</button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+                grid.innerHTML = cardsHtml;
+            } else {
+                grid.innerHTML = '<div class="col-span-full text-center py-12 text-slate-400">暂无文章，点击右上角添加</div>';
             }
         } catch (e) {
-            console.error("Failed to load market data", e);
+            console.error(e);
+            grid.innerHTML = '<div class="col-span-full text-center py-12 text-red-400">加载失败: ' + e.message + '</div>';
         }
     }
 
-    function renderTopSectors(sectors) {
-        const container = document.getElementById('top-sectors-list');
-        container.innerHTML = ''; // Clear existing
+    async function openReaderModal(id) {
+        try {
+            const res = await fetch('/api/system/articles');
+            const data = await res.json();
+            const articles = Array.isArray(data) ? data : (data.articles || []);
+            const article = articles.find(a => a.id === id);
 
-        // Take top 5
-        const top5 = sectors.slice(0, 5);
+            if (article) {
+                document.getElementById('reader-title').textContent = article.title;
+                document.getElementById('reader-author').textContent = article.author;
+                document.getElementById('reader-date').textContent = new Date(article.created_at * 1000).toLocaleString();
+                document.getElementById('reader-tags').innerHTML = article.tags.map(tag =>
+                    `<span class="bg-slate-100 text-slate-600 text-xs px-2 py-1 rounded-full">${tag}</span>`
+                ).join('');
 
-        top5.forEach((sector, index) => {
-            const rank = index + 1;
-            const isTop3 = rank <= 3;
-            const rankBg = isTop3 ? 'bg-red-100 text-red-600' : 'bg-slate-100 text-slate-600';
-            const changeColor = sector.change >= 0 ? 'text-red-600' : 'text-green-600';
-            const sign = sector.change > 0 ? '+' : '';
+                // Render Markdown content
+                const contentEl = document.getElementById('reader-content');
+                contentEl.innerHTML = marked.parse(article.content);
+                contentEl.classList.add('markdown-content'); // Add markdown styling class
 
-            const item = `
-                <div class="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
-                    <div class="flex items-center">
-                        <span class="w-8 h-8 rounded-full ${rankBg} flex items-center justify-center text-xs font-bold mr-3">${rank}</span>
-                        <span class="font-medium text-slate-700">${sector.name}</span>
-                    </div>
-                    <div class="${changeColor} font-bold">${sign}${sector.change}%</div>
-                </div>
-            `;
-            container.innerHTML += item;
-        });
-    }
-
-    function renderSectorChart(sectors) {
-        const ctx = document.getElementById('sectorChart').getContext('2d');
-
-        // Destroy existing chart if it exists
-        if (marketChart) {
-            marketChart.destroy();
-        }
-
-        // Prepare data
-        const labels = sectors.map(s => s.name);
-        const changes = sectors.map(s => s.change);
-        // A-share style: Red for positive (up), Green for negative (down)
-        const colors = changes.map(v => v >= 0 ? 'rgba(220, 38, 38, 0.8)' : 'rgba(22, 163, 74, 0.8)');
-        const borders = changes.map(v => v >= 0 ? 'rgba(220, 38, 38, 1)' : 'rgba(22, 163, 74, 1)');
-
-        marketChart = new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: labels,
-                datasets: [{
-                    label: '涨跌幅 (%)',
-                    data: changes,
-                    backgroundColor: colors,
-                    borderColor: borders,
-                    borderWidth: 1,
-                    borderRadius: 4
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        display: false
-                    },
-                    tooltip: {
-                        callbacks: {
-                            label: function (context) {
-                                return `涨跌幅: ${context.parsed.y > 0 ? '+' : ''}${context.parsed.y}%`;
-                            }
-                        }
-                    }
-                },
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        grid: {
-                            color: 'rgba(241, 245, 249, 1)'
-                        },
-                        ticks: {
-                            callback: function (value) {
-                                return value + '%';
-                            }
-                        }
-                    },
-                    x: {
-                        grid: {
-                            display: false
-                        }
-                    }
-                }
+                document.getElementById('reader-modal').classList.remove('hidden');
             }
-        });
+        } catch (e) {
+            console.error(e);
+        }
+    }
+
+    function closeReaderModal() {
+        document.getElementById('reader-modal').classList.add('hidden');
+    }
+
+    async function openArticleModal(id = null) {
+        document.getElementById('article-modal').classList.remove('hidden');
+
+        if (id) {
+            // Edit Mode
+            document.getElementById('article-modal-title').textContent = '编辑文章';
+            document.getElementById('article-id').value = id;
+
+            const res = await fetch('/api/system/articles');
+            const data = await res.json();
+            const articles = Array.isArray(data) ? data : (data.articles || []);
+            const article = articles.find(a => a.id === id);
+
+            if (article) {
+                document.getElementById('article-title').value = article.title;
+                document.getElementById('article-author').value = article.author;
+                document.getElementById('article-tags').value = article.tags.join(', ');
+                document.getElementById('article-content').value = article.content;
+            }
+        } else {
+            // Add Mode
+            document.getElementById('article-modal-title').textContent = '新增文章';
+            document.getElementById('article-id').value = '';
+            document.getElementById('article-title').value = '';
+            document.getElementById('article-author').value = '';
+            document.getElementById('article-tags').value = '';
+            document.getElementById('article-content').value = '';
+        }
+    }
+
+    function closeArticleModal() {
+        document.getElementById('article-modal').classList.add('hidden');
+    }
+
+    async function importFromUrl() {
+        const urlInput = document.getElementById('import-url');
+        const url = urlInput.value.trim();
+        const btn = document.getElementById('btn-import');
+        const loading = document.getElementById('import-loading');
+
+        if (!url) {
+            alert("请输入网址");
+            return;
+        }
+
+        // Set loading state
+        btn.disabled = true;
+        loading.classList.remove('hidden');
+        btn.classList.add('opacity-75');
+
+        try {
+            const res = await fetch('/api/system/scrape', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ url: url })
+            });
+
+            const data = await res.json();
+
+            if (data.error) {
+                alert('导入失败: ' + data.error);
+            } else {
+                // Populate form
+                document.getElementById('article-title').value = data.title || '';
+                document.getElementById('article-author').value = data.author || '';
+                document.getElementById('article-content').value = data.content || '';
+
+                // Optional: Try to guess tags or add "Imported" tag
+                // document.getElementById('article-tags').value = "自动导入";
+
+                alert('导入成功！请检查内容并保存。');
+            }
+        } catch (e) {
+            console.error(e);
+            alert('请求失败，请检查网络或后端日志');
+        } finally {
+            // Reset loading state
+            btn.disabled = false;
+            loading.classList.add('hidden');
+            btn.classList.remove('opacity-75');
+        }
+    }
+
+    async function saveArticle() {
+        const id = document.getElementById('article-id').value;
+        const title = document.getElementById('article-title').value;
+        const author = document.getElementById('article-author').value;
+        const content = document.getElementById('article-content').value;
+        const tagsStr = document.getElementById('article-tags').value;
+        const tags = tagsStr.split(/[,，]/).map(t => t.trim()).filter(t => t);
+
+        if (!title || !content) {
+            alert('标题和内容不能为空');
+            return;
+        }
+
+        const url = id ? `/api/system/articles/${id}` : '/api/system/articles';
+        const method = id ? 'PUT' : 'POST';
+
+        try {
+            const res = await fetch(url, {
+                method: method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ title, author, content, tags })
+            });
+            const data = await res.json();
+
+            if (data.status === 'success') {
+                closeArticleModal();
+                loadArticles();
+            } else {
+                alert('Error: ' + data.error);
+            }
+        } catch (e) {
+            console.error(e);
+            alert('Failed to save article');
+        }
+    }
+
+    async function deleteArticle(id) {
+        if (!confirm('确定要删除这篇文章吗？')) return;
+
+        try {
+            const res = await fetch(`/api/system/articles/${id}`, { method: 'DELETE' });
+            const data = await res.json();
+
+            if (data.status === 'success') {
+                loadArticles();
+            } else {
+                alert('Error: ' + data.error);
+            }
+        } catch (e) {
+            console.error(e);
+            alert('Failed to delete article');
+        }
     }
 
     // Initial load

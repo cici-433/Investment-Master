@@ -29,7 +29,8 @@
             "ticker": "560280.SS",
             "shares": 3100.0,
             "cost": 1.6596,
-            "group_id": "default"
+            "group_id": "default",
+            "note": "参考三一重工的PR，PR=PB/ROE/ROE = 2.86/21.45/21.45= 0.62.目前低估，可以买入"
         },
         {
             "ticker": "512000.SS",

@@ -2,13 +2,15 @@ from .selection import StockSelector
 from .valuation import Valuator
 from .analysis import Analyzer
 from .portfolio_manager import PortfolioManager
+from .system_manager import SystemManager
 
 class InvestmentMaster:
     def __init__(self):
-        self.selector = StockSelector()
+        # self.selector = StockSelector()
         self.valuator = Valuator()
-        self.analyzer = Analyzer()
+        # self.analyzer = Analyzer()
         self.portfolio = PortfolioManager()
+        self.system_manager = SystemManager()
 
     def _normalize_ticker(self, ticker):
         """
