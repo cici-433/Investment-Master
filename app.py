@@ -334,6 +334,17 @@ def delete_group(group_id):
         return jsonify({"status": "success"})
     return jsonify({"error": "Failed to delete group (cannot delete default or not found)"}), 400
 
+@app.route('/api/portfolio/groups/reorder', methods=['POST'])
+def reorder_groups():
+    data = request.json
+    group_ids = data.get('group_ids')
+    if not group_ids or not isinstance(group_ids, list):
+        return jsonify({"error": "Invalid group_ids"}), 400
+        
+    if master.portfolio.reorder_groups(group_ids):
+        return jsonify({"status": "success"})
+    return jsonify({"error": "Failed to reorder groups"}), 500
+
 @app.route('/api/portfolio/holdings/move', methods=['POST'])
 def move_holding():
     data = request.json

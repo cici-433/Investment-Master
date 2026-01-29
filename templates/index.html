@@ -1061,6 +1061,30 @@
                 });
             });
 
+            // Initialize Sortable for the groups container
+            new Sortable(container, {
+                animation: 150,
+                handle: '.group-drag-handle', // Drag handle selector
+                ghostClass: 'sortable-ghost',
+                onEnd: async function (evt) {
+                    // Get new order
+                    const itemEls = container.children;
+                    const groupIds = Array.from(itemEls).map(el => el.getAttribute('data-group-id'));
+
+                    // Call API to save order
+                    try {
+                        await fetch('/api/portfolio/groups/reorder', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ group_ids: groupIds })
+                        });
+                        console.log('Group order saved');
+                    } catch (e) {
+                        console.error('Failed to reorder groups', e);
+                    }
+                }
+            });
+
             // Update Summary
             document.getElementById('total-assets').textContent = totalAssets.toLocaleString('zh-CN', { minimumFractionDigits: 2 });
             const gainElem = document.getElementById('total-gain');
@@ -1165,9 +1189,12 @@
         }
 
         return `
-            <div class="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden group-container" id="group-${group.id}">
+            <div class="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden group-container mb-8" id="group-${group.id}" data-group-id="${group.id}">
                 <div class="px-6 py-4 bg-slate-50 border-b border-slate-200 flex justify-between items-center group-header">
                     <div class="flex items-center">
+                        <div class="group-drag-handle cursor-grab text-slate-400 hover:text-slate-600 mr-3" title="Drag to reorder groups">
+                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8h16M4 16h16"></path></svg>
+                        </div>
                         <h3 class="font-bold text-slate-700" id="group-name-${group.id}">${group.name}</h3>
                         <span class="ml-3 text-xs font-medium px-2 py-1 bg-slate-100 text-slate-600 rounded-full">占比: ${groupWeight}%</span>
                         ${!isDefault ? `
