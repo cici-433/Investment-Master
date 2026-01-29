@@ -2,40 +2,26 @@ import json
 import os
 import uuid
 import time
+from .storage import get_storage
 
 class SystemManager:
     def __init__(self, data_file='data/investment_system.json'):
-        self.data_file = data_file
-        self.ensure_data_file()
-
-    def ensure_data_file(self):
-        """Ensure the data file and directory exist."""
-        directory = os.path.dirname(self.data_file)
-        if directory and not os.path.exists(directory):
-            os.makedirs(directory)
-        
-        if not os.path.exists(self.data_file):
-            initial_data = {
-                "articles": []
-            }
-            self.save_data(initial_data)
+        self.storage = get_storage(data_file)
+        # Ensure initial structure if empty
+        data = self.load_data()
+        if not data.get("articles"):
+             self.save_data({"articles": []})
 
     def load_data(self):
-        """Load system data from JSON file."""
-        try:
-            with open(self.data_file, 'r', encoding='utf-8') as f:
-                return json.load(f)
-        except Exception as e:
-            print(f"Error loading system data: {e}")
+        """Load system data from storage."""
+        data = self.storage.load()
+        if not data:
             return {"articles": []}
+        return data
 
     def save_data(self, data):
-        """Save system data to JSON file."""
-        try:
-            with open(self.data_file, 'w', encoding='utf-8') as f:
-                json.dump(data, f, indent=4, ensure_ascii=False)
-        except Exception as e:
-            print(f"Error saving system data: {e}")
+        """Save system data to storage."""
+        self.storage.save(data)
 
     def get_articles(self):
         return self.load_data().get("articles", [])

@@ -6,3 +6,4 @@ flask
 playwright
 beautifulsoup4
 requests
+pymongo

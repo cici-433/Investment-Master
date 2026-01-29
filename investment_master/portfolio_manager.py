@@ -1,59 +1,52 @@
 import json
 import os
+from .storage import get_storage
 
 class PortfolioManager:
     def __init__(self, data_file='data/portfolio.json'):
-        self.data_file = data_file
-        self.ensure_data_file()
+        self.storage = get_storage(data_file)
+        # Ensure initial structure if empty
+        data = self.load_data()
+        if not data.get("holdings") and not data.get("watchlist"):
+             self.ensure_initial_data()
 
-    def ensure_data_file(self):
-        """Ensure the data file and directory exist."""
-        directory = os.path.dirname(self.data_file)
-        if directory and not os.path.exists(directory):
-            os.makedirs(directory)
-        
-        if not os.path.exists(self.data_file):
-            initial_data = {
-                "holdings": [],
-                "watchlist": []
-            }
-            self.save_data(initial_data)
+    def ensure_initial_data(self):
+         initial_data = {
+            "holdings": [],
+            "watchlist": [],
+            "groups": [{"id": "default", "name": "默认分组"}]
+         }
+         self.save_data(initial_data)
 
     def load_data(self):
-        """Load portfolio data from JSON file."""
-        try:
-            with open(self.data_file, 'r', encoding='utf-8') as f:
-                data = json.load(f)
-                # Migration: Ensure groups exist
-                if "groups" not in data:
-                    data["groups"] = [{"id": "default", "name": "默认分组"}]
-                
-                # Always ensure holdings have group_id
-                migrated = False
-                for h in data.get("holdings", []):
-                    if "group_id" not in h:
-                        h["group_id"] = "default"
-                        migrated = True
-                
-                if migrated or "groups" not in data: # This check is slightly redundant but safe
-                    self.save_data(data)
-                    
-                return data
-        except Exception as e:
-            print(f"Error loading portfolio data: {e}")
+        """Load portfolio data from storage."""
+        data = self.storage.load()
+        if not data:
             return {
                 "holdings": [], 
                 "watchlist": [],
                 "groups": [{"id": "default", "name": "默认分组"}]
             }
+            
+        # Migration: Ensure groups exist
+        if "groups" not in data:
+            data["groups"] = [{"id": "default", "name": "默认分组"}]
+        
+        # Always ensure holdings have group_id
+        migrated = False
+        for h in data.get("holdings", []):
+            if "group_id" not in h:
+                h["group_id"] = "default"
+                migrated = True
+        
+        if migrated: 
+            self.save_data(data)
+            
+        return data
 
     def save_data(self, data):
-        """Save portfolio data to JSON file."""
-        try:
-            with open(self.data_file, 'w', encoding='utf-8') as f:
-                json.dump(data, f, indent=4, ensure_ascii=False)
-        except Exception as e:
-            print(f"Error saving portfolio data: {e}")
+        """Save portfolio data to storage."""
+        self.storage.save(data)
 
     def get_holdings(self):
         return self.load_data().get("holdings", [])

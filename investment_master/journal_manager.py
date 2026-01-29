@@ -3,40 +3,25 @@ import os
 import uuid
 import time
 from datetime import datetime
+from .storage import get_storage
 
 class JournalManager:
     def __init__(self, data_file='data/investment_journal.json'):
-        self.data_file = data_file
-        self.ensure_data_file()
-
-    def ensure_data_file(self):
-        """Ensure the data file and directory exist."""
-        directory = os.path.dirname(self.data_file)
-        if directory and not os.path.exists(directory):
-            os.makedirs(directory)
-        
-        if not os.path.exists(self.data_file):
-            initial_data = {
-                "entries": []
-            }
-            self.save_data(initial_data)
+        self.storage = get_storage(data_file)
+        data = self.load_data()
+        if not data.get("entries"):
+             self.save_data({"entries": []})
 
     def load_data(self):
-        """Load journal data from JSON file."""
-        try:
-            with open(self.data_file, 'r', encoding='utf-8') as f:
-                return json.load(f)
-        except Exception as e:
-            print(f"Error loading journal data: {e}")
+        """Load journal data from storage."""
+        data = self.storage.load()
+        if not data:
             return {"entries": []}
+        return data
 
     def save_data(self, data):
-        """Save journal data to JSON file."""
-        try:
-            with open(self.data_file, 'w', encoding='utf-8') as f:
-                json.dump(data, f, indent=4, ensure_ascii=False)
-        except Exception as e:
-            print(f"Error saving journal data: {e}")
+        """Save journal data to storage."""
+        self.storage.save(data)
 
     def get_entries(self, limit=None):
         data = self.load_data()
