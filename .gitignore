@@ -3,7 +3,7 @@ __pycache__/
 *.pyc
 .DS_Store
 .env
-data/*.json
+# data/*.json  <-- 已注释掉，允许上传
 instance/
 .trae/
 *.log
