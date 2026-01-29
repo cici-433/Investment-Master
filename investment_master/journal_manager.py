@@ -1,0 +1,94 @@
+import json
+import os
+import uuid
+import time
+from datetime import datetime
+
+class JournalManager:
+    def __init__(self, data_file='data/investment_journal.json'):
+        self.data_file = data_file
+        self.ensure_data_file()
+
+    def ensure_data_file(self):
+        """Ensure the data file and directory exist."""
+        directory = os.path.dirname(self.data_file)
+        if directory and not os.path.exists(directory):
+            os.makedirs(directory)
+        
+        if not os.path.exists(self.data_file):
+            initial_data = {
+                "entries": []
+            }
+            self.save_data(initial_data)
+
+    def load_data(self):
+        """Load journal data from JSON file."""
+        try:
+            with open(self.data_file, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except Exception as e:
+            print(f"Error loading journal data: {e}")
+            return {"entries": []}
+
+    def save_data(self, data):
+        """Save journal data to JSON file."""
+        try:
+            with open(self.data_file, 'w', encoding='utf-8') as f:
+                json.dump(data, f, indent=4, ensure_ascii=False)
+        except Exception as e:
+            print(f"Error saving journal data: {e}")
+
+    def get_entries(self, limit=None):
+        data = self.load_data()
+        entries = data.get("entries", [])
+        # Sort by date descending (newest first)
+        entries.sort(key=lambda x: x.get('date', ''), reverse=True)
+        if limit:
+            return entries[:limit]
+        return entries
+
+    def add_entry(self, entry_type, title, content, date=None, ticker=None, tags=None):
+        data = self.load_data()
+        
+        if not date:
+            date = datetime.now().strftime('%Y-%m-%d')
+            
+        entry = {
+            "id": str(uuid.uuid4()),
+            "type": entry_type, # 'trade', 'review', 'note', 'plan'
+            "title": title,
+            "content": content,
+            "date": date,
+            "ticker": ticker,
+            "tags": tags or [],
+            "created_at": int(time.time()),
+            "updated_at": int(time.time())
+        }
+        
+        data["entries"].append(entry)
+        self.save_data(data)
+        return entry
+
+    def update_entry(self, entry_id, entry_type=None, title=None, content=None, date=None, ticker=None, tags=None):
+        data = self.load_data()
+        for entry in data["entries"]:
+            if entry["id"] == entry_id:
+                if entry_type: entry["type"] = entry_type
+                if title: entry["title"] = title
+                if content: entry["content"] = content
+                if date: entry["date"] = date
+                if ticker is not None: entry["ticker"] = ticker
+                if tags is not None: entry["tags"] = tags
+                entry["updated_at"] = int(time.time())
+                self.save_data(data)
+                return True
+        return False
+
+    def delete_entry(self, entry_id):
+        data = self.load_data()
+        original_count = len(data["entries"])
+        data["entries"] = [e for e in data["entries"] if e["id"] != entry_id]
+        if len(data["entries"]) < original_count:
+            self.save_data(data)
+            return True
+        return False

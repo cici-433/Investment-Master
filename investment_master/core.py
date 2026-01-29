@@ -3,6 +3,7 @@ from .valuation import Valuator
 from .analysis import Analyzer
 from .portfolio_manager import PortfolioManager
 from .system_manager import SystemManager
+from .journal_manager import JournalManager
 
 class InvestmentMaster:
     def __init__(self):
@@ -11,6 +12,7 @@ class InvestmentMaster:
         # self.analyzer = Analyzer()
         self.portfolio = PortfolioManager()
         self.system_manager = SystemManager()
+        self.journal_manager = JournalManager()
 
     def _normalize_ticker(self, ticker):
         """

@@ -127,12 +127,14 @@
             document.getElementById('view-portfolio').classList.add('hidden');
             const viewSystem = document.getElementById('view-system');
             if (viewSystem) viewSystem.classList.add('hidden');
+            const viewJournal = document.getElementById('view-journal');
+            if (viewJournal) viewJournal.classList.add('hidden');
 
             // Show selected view
             document.getElementById('view-' + tabId).classList.remove('hidden');
 
             // Reset nav styles
-            const navs = ['valuation', 'portfolio', 'system'];
+            const navs = ['valuation', 'portfolio', 'system', 'journal'];
             navs.forEach(nav => {
                 const el = document.getElementById('nav-' + nav);
                 if (nav === tabId) {
@@ -148,6 +150,8 @@
             } else if (tabId === 'portfolio') {
                 if (currentPortfolioTab === 'holdings') loadHoldings();
                 else loadWatchlist();
+            } else if (tabId === 'journal') {
+                loadJournalEntries();
             }
         }
 
@@ -210,6 +214,8 @@
                             class="text-slate-500 hover:text-slate-900 px-3 py-2 rounded-md text-sm font-medium transition-colors hover:bg-slate-50 cursor-pointer">我的持仓</a>
                         <a id="nav-system" onclick="switchTab('system')"
                             class="text-slate-500 hover:text-slate-900 px-3 py-2 rounded-md text-sm font-medium transition-colors hover:bg-slate-50 cursor-pointer">投资体系</a>
+                        <a id="nav-journal" onclick="switchTab('journal')"
+                            class="text-slate-500 hover:text-slate-900 px-3 py-2 rounded-md text-sm font-medium transition-colors hover:bg-slate-50 cursor-pointer">复盘日志</a>
                     </div>
                 </div>
                 <div class="flex items-center">
@@ -784,6 +790,25 @@
             </div>
         </div>
 
+        <!-- 4. Journal View -->
+        <div id="view-journal" class="hidden">
+            <div class="flex justify-between items-center mb-8">
+                <h1 class="text-3xl font-bold text-slate-900">复盘日志</h1>
+                <button onclick="openAddJournalModal()"
+                    class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                    </svg>
+                    写日志
+                </button>
+            </div>
+
+            <div id="journal-list"
+                class="space-y-6 relative before:absolute before:inset-0 before:ml-5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-slate-300 before:to-transparent">
+                <!-- Journal Entries will be loaded here -->
+            </div>
+        </div>
+
     </main>
 
     <!-- Add Stock Modal -->
@@ -837,6 +862,59 @@
                     class="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">取消</button>
                 <button onclick="submitAddStock()"
                     class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">确认添加</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Journal Modal -->
+    <div id="add-journal-modal"
+        class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center">
+        <div class="bg-white rounded-xl shadow-lg p-6 w-[600px] max-h-[90vh] flex flex-col">
+            <h3 id="journal-modal-title" class="text-xl font-bold mb-4">写日志</h3>
+
+            <div class="space-y-4 overflow-y-auto flex-1 p-1">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">日期</label>
+                        <input type="date" id="journal-date"
+                            class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">类型</label>
+                        <select id="journal-type"
+                            class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                            <option value="note">随笔记录</option>
+                            <option value="trade">交易决策</option>
+                            <option value="review">定期复盘</option>
+                            <option value="plan">投资计划</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">关联股票 (可选)</label>
+                    <input type="text" id="journal-ticker" placeholder="e.g. 600519.SS"
+                        class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">标题</label>
+                    <input type="text" id="journal-title" placeholder="日志标题..."
+                        class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">内容</label>
+                    <textarea id="journal-content" rows="8" placeholder="写下你的思考..."
+                        class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none font-sans"></textarea>
+                </div>
+            </div>
+
+            <div class="mt-6 flex justify-end space-x-3 pt-4 border-t border-slate-100">
+                <button onclick="closeAddJournalModal()"
+                    class="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">取消</button>
+                <button onclick="saveJournalEntry()"
+                    class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">保存</button>
             </div>
         </div>
     </div>
@@ -1854,6 +1932,199 @@
         } catch (e) {
             console.error(e);
             alert('Failed to delete article');
+        }
+    }
+
+    // --- Journal Logic ---
+
+    let currentJournalId = null;
+
+    async function loadJournalEntries() {
+        const container = document.getElementById('journal-list');
+        container.innerHTML = '<div class="text-center py-4 text-slate-400">加载中...</div>';
+
+        try {
+            const response = await fetch('/api/journal/entries');
+            const entries = await response.json();
+
+            container.innerHTML = '';
+
+            // Sort by date desc
+            entries.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+            if (entries.length === 0) {
+                container.innerHTML = '<div class="text-center py-8 text-slate-400">暂无日志记录，点击"写日志"添加第一条记录</div>';
+                return;
+            }
+
+            entries.forEach(entry => {
+                const typeLabels = {
+                    'note': { text: '随笔', color: 'bg-slate-100 text-slate-600' },
+                    'trade': { text: '交易', color: 'bg-blue-100 text-blue-600' },
+                    'review': { text: '复盘', color: 'bg-purple-100 text-purple-600' },
+                    'plan': { text: '计划', color: 'bg-green-100 text-green-600' }
+                };
+                const typeInfo = typeLabels[entry.type] || typeLabels['note'];
+
+                const entryHtml = `
+                    <div class="relative pl-8 md:pl-0">
+                        <!-- Timeline Line (handled by container css) -->
+                        
+                        <!-- Dot -->
+                        <div class="absolute left-0 md:left-1/2 md:-translate-x-1/2 w-4 h-4 rounded-full bg-white border-4 border-blue-200 mt-6 z-10 box-content">
+                            <div class="w-2 h-2 rounded-full bg-blue-500 m-1"></div>
+                        </div>
+
+                        <div class="md:flex md:justify-between md:items-center w-full group">
+                            <!-- Left: Date (Desktop) -->
+                            <div class="hidden md:block md:w-[45%] md:text-right md:pr-8 pt-6">
+                                <div class="font-bold text-slate-700">${entry.date}</div>
+                                <div class="text-xs text-slate-400 mt-1">${entry.ticker || ''}</div>
+                            </div>
+
+                            <!-- Right: Content Card -->
+                            <div class="md:w-[45%] md:pl-8 pb-8">
+                                <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-100 hover:shadow-md transition-shadow relative">
+                                    
+                                    <!-- Mobile Date -->
+                                    <div class="md:hidden text-xs text-slate-400 mb-2 flex justify-between">
+                                        <span>${entry.date}</span>
+                                        <span>${entry.ticker || ''}</span>
+                                    </div>
+
+                                    <div class="flex justify-between items-start mb-3">
+                                        <div class="flex items-center space-x-2">
+                                            <span class="text-xs font-bold px-2 py-1 rounded-md ${typeInfo.color}">${typeInfo.text}</span>
+                                            <h3 class="font-bold text-slate-800 line-clamp-1">${entry.title}</h3>
+                                        </div>
+                                        <div class="flex space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <button onclick="openEditJournalModal('${entry.id}')" class="text-slate-400 hover:text-blue-600">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                                            </button>
+                                            <button onclick="deleteJournalEntry('${entry.id}')" class="text-slate-400 hover:text-red-600">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="text-slate-600 text-sm whitespace-pre-wrap leading-relaxed">${entry.content}</div>
+                                    
+                                    ${entry.tags && entry.tags.length > 0 ? `
+                                        <div class="mt-4 flex flex-wrap gap-2">
+                                            ${entry.tags.map(tag => `<span class="text-xs text-slate-500 bg-slate-50 px-2 py-1 rounded">#${tag}</span>`).join('')}
+                                        </div>
+                                    ` : ''}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                container.insertAdjacentHTML('beforeend', entryHtml);
+            });
+
+        } catch (e) {
+            console.error(e);
+            container.innerHTML = '<div class="text-center py-4 text-red-400">加载日志失败</div>';
+        }
+    }
+
+    function openAddJournalModal() {
+        currentJournalId = null;
+        document.getElementById('add-journal-modal').classList.remove('hidden');
+        document.getElementById('journal-modal-title').textContent = '写日志';
+
+        // Default date to today
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('journal-date').value = today;
+
+        document.getElementById('journal-type').value = 'note';
+        document.getElementById('journal-ticker').value = '';
+        document.getElementById('journal-title').value = '';
+        document.getElementById('journal-content').value = '';
+    }
+
+    async function openEditJournalModal(id) {
+        currentJournalId = id;
+        document.getElementById('add-journal-modal').classList.remove('hidden');
+        document.getElementById('journal-modal-title').textContent = '编辑日志';
+
+        try {
+            const response = await fetch('/api/journal/entries');
+            const entries = await response.json();
+            const entry = entries.find(e => e.id === id);
+
+            if (entry) {
+                document.getElementById('journal-date').value = entry.date;
+                document.getElementById('journal-type').value = entry.type;
+                document.getElementById('journal-ticker').value = entry.ticker || '';
+                document.getElementById('journal-title').value = entry.title;
+                document.getElementById('journal-content').value = entry.content;
+            }
+        } catch (e) {
+            console.error(e);
+            alert('加载日志详情失败');
+        }
+    }
+
+    function closeAddJournalModal() {
+        document.getElementById('add-journal-modal').classList.add('hidden');
+    }
+
+    async function saveJournalEntry() {
+        const date = document.getElementById('journal-date').value;
+        const type = document.getElementById('journal-type').value;
+        const ticker = document.getElementById('journal-ticker').value;
+        const title = document.getElementById('journal-title').value;
+        const content = document.getElementById('journal-content').value;
+
+        if (!title || !content) {
+            alert('标题和内容不能为空');
+            return;
+        }
+
+        const url = currentJournalId ? `/api/journal/entries/${currentJournalId}` : '/api/journal/entries';
+        const method = currentJournalId ? 'PUT' : 'POST';
+
+        const body = {
+            date, type, ticker, title, content
+        };
+
+        try {
+            const res = await fetch(url, {
+                method: method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+
+            const data = await res.json();
+
+            if (data.status === 'success') {
+                closeAddJournalModal();
+                loadJournalEntries();
+            } else {
+                alert('保存失败: ' + (data.error || '未知错误'));
+            }
+        } catch (e) {
+            console.error(e);
+            alert('请求失败');
+        }
+    }
+
+    async function deleteJournalEntry(id) {
+        if (!confirm('确定要删除这条日志吗？')) return;
+
+        try {
+            const res = await fetch(`/api/journal/entries/${id}`, { method: 'DELETE' });
+            const data = await res.json();
+
+            if (data.status === 'success') {
+                loadJournalEntries();
+            } else {
+                alert('删除失败: ' + data.error);
+            }
+        } catch (e) {
+            console.error(e);
+            alert('请求失败');
         }
     }
 

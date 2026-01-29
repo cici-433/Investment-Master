@@ -201,6 +201,48 @@ def delete_article(article_id):
         return jsonify({"status": "success"})
     return jsonify({"error": "Failed to delete article"}), 500
 
+# --- Journal API ---
+
+@app.route('/api/journal/entries', methods=['GET'])
+def get_journal_entries():
+    return jsonify(master.journal_manager.get_entries())
+
+@app.route('/api/journal/entries', methods=['POST'])
+def add_journal_entry():
+    data = request.json
+    title = data.get('title')
+    content = data.get('content')
+    entry_type = data.get('type', 'note')
+    date = data.get('date')
+    ticker = data.get('ticker')
+    tags = data.get('tags')
+    
+    if not title:
+        return jsonify({"error": "Title is required"}), 400
+        
+    entry = master.journal_manager.add_entry(entry_type, title, content, date, ticker, tags)
+    return jsonify({"status": "success", "entry": entry})
+
+@app.route('/api/journal/entries/<entry_id>', methods=['PUT'])
+def update_journal_entry(entry_id):
+    data = request.json
+    title = data.get('title')
+    content = data.get('content')
+    entry_type = data.get('type')
+    date = data.get('date')
+    ticker = data.get('ticker')
+    tags = data.get('tags')
+    
+    if master.journal_manager.update_entry(entry_id, entry_type, title, content, date, ticker, tags):
+        return jsonify({"status": "success"})
+    return jsonify({"error": "Failed to update entry"}), 500
+
+@app.route('/api/journal/entries/<entry_id>', methods=['DELETE'])
+def delete_journal_entry(entry_id):
+    if master.journal_manager.delete_entry(entry_id):
+        return jsonify({"status": "success"})
+    return jsonify({"error": "Failed to delete entry"}), 500
+
 # --- Portfolio API ---
 
 @app.route('/api/portfolio/holdings', methods=['GET'])
