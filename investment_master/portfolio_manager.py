@@ -113,48 +113,28 @@ class PortfolioManager:
         self.save_data(data)
         return True
 
-    def add_holding(self, ticker, shares, cost, group_id='default', note=None):
+    def add_holding(self, ticker, shares, cost_basis, group_id='default', name=None):
         data = self.load_data()
-        # Check if already exists, update if so
-        found = False
+        # Check if already exists in this group
+        for h in data["holdings"]:
+            if h["ticker"] == ticker and h.get("group_id", "default") == group_id:
+                h["shares"] += shares
+                # Weighted average cost
+                total_cost = (h["shares"] - shares) * h["cost_basis"] + shares * cost_basis
+                h["cost_basis"] = total_cost / h["shares"]
+                if name:
+                    h["name"] = name # Update name if provided
+                self.save_data(data)
+                return
         
-        # Normalize target ticker base (remove suffix for loose comparison)
-        target_base = ticker.split('.')[0]
-        
-        for item in data["holdings"]:
-            current_ticker = item["ticker"]
-            current_base = current_ticker.split('.')[0]
-            
-            # Match exact ticker OR base ticker (handling normalization migration)
-            if current_ticker == ticker or current_base == target_base:
-                item["ticker"] = ticker # Update to normalized ticker
-                item["shares"] = shares
-                item["cost"] = cost
-                # Only update group if explicitly provided/changed? 
-                # For now, let's assume we update it if provided, or keep existing if not?
-                # Usually add/edit modal might pass group_id. 
-                if group_id:
-                    item["group_id"] = group_id
-                elif "group_id" not in item:
-                    item["group_id"] = "default"
-                
-                if note is not None:
-                    item["note"] = note
-                    
-                found = True
-                break
-        
-        if not found:
-            data["holdings"].append({
-                "ticker": ticker,
-                "shares": shares,
-                "cost": cost,
-                "group_id": group_id or "default",
-                "note": note or ""
-            })
-        
+        data["holdings"].append({
+            "ticker": ticker,
+            "shares": shares,
+            "cost_basis": cost_basis,
+            "group_id": group_id,
+            "name": name # Save name
+        })
         self.save_data(data)
-        return True
 
     def move_holding(self, ticker, target_group_id):
         data = self.load_data()
@@ -182,12 +162,20 @@ class PortfolioManager:
         self.save_data(data)
         return True
 
-    def add_to_watchlist(self, ticker):
+    def add_to_watchlist(self, ticker, name=None):
         data = self.load_data()
-        if ticker not in data["watchlist"]:
-            data["watchlist"].append(ticker)
-            self.save_data(data)
-        return True
+        for item in data["watchlist"]:
+            if item["ticker"] == ticker:
+                if name:
+                    item["name"] = name # Update name
+                    self.save_data(data)
+                return # Already in watchlist
+        
+        data["watchlist"].append({
+            "ticker": ticker,
+            "name": name # Save name
+        })
+        self.save_data(data)
 
     def remove_from_watchlist(self, ticker):
         data = self.load_data()

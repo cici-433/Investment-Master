@@ -38,8 +38,13 @@ INDUSTRY_MAP = {
 
 def get_cn_stock_info(ticker):
     """
-    Fetch Chinese name from Sina Finance API for A-shares
+    Fetch Chinese name from Sina Finance API for A-shares.
+    Fallback to local portfolio.json data if API fails.
     """
+    cn_name = None
+    day_change_percent = 0.0
+    
+    # 1. Try Sina API first
     try:
         # Convert Ticker format: 600036.SS -> sh600036
         sina_code = ""
@@ -47,35 +52,61 @@ def get_cn_stock_info(ticker):
             sina_code = "sh" + ticker.split('.')[0]
         elif ticker.endswith('.SZ'):
             sina_code = "sz" + ticker.split('.')[0]
-        else:
-            return None # Not A-share or unknown
-            
-        url = f"http://hq.sinajs.cn/list={sina_code}"
-        headers = {'Referer': 'https://finance.sina.com.cn'}
-        response = requests.get(url, headers=headers)
         
-        if response.status_code == 200:
-            content = response.text
-            # Format: var hq_str_sh600036="招商银行,open,pre_close,current,high,low,..."
-            if '="' in content:
-                data_str = content.split('="')[1]
-                data_parts = data_str.split(',')
-                if len(data_parts) > 3:
-                    name = data_parts[0]
-                    pre_close = float(data_parts[2])
-                    current = float(data_parts[3])
-                    day_change_percent = 0.0
-                    if pre_close > 0:
-                        day_change_percent = (current - pre_close) / pre_close * 100
+        if sina_code:
+            url = f"http://hq.sinajs.cn/list={sina_code}"
+            headers = {'Referer': 'https://finance.sina.com.cn'}
+            response = requests.get(url, headers=headers, timeout=2) # Short timeout
+            
+            if response.status_code == 200:
+                content = response.text
+                # Format: var hq_str_sh600036="招商银行,open,pre_close,current,high,low,..."
+                if '="' in content:
+                    data_str = content.split('="')[1]
+                    data_parts = data_str.split(',')
+                    if len(data_parts) > 3:
+                        cn_name = data_parts[0]
+                        pre_close = float(data_parts[2])
+                        current = float(data_parts[3])
+                        if pre_close > 0:
+                            day_change_percent = (current - pre_close) / pre_close * 100
                         
-                    return {
-                        "name": name,
-                        "current_price": current,
-                        "pre_close": pre_close,
-                        "day_change_percent": day_change_percent
-                    }
+                        return {
+                            "name": cn_name,
+                            "current_price": current,
+                            "pre_close": pre_close,
+                            "day_change_percent": day_change_percent
+                        }
     except Exception as e:
-        print(f"Error fetching CN info for {ticker}: {e}")
+        print(f"Error fetching CN info for {ticker} from Sina: {e}")
+
+    # 2. Fallback to local portfolio data
+    try:
+        portfolio_data = master.portfolio_manager.load_data()
+        
+        # Check holdings
+        for h in portfolio_data.get('holdings', []):
+            if h.get('ticker') == ticker and h.get('name'):
+                return {
+                    "name": h['name'],
+                    # We can't get real-time price from local file, so return None for those
+                    "current_price": None, 
+                    "pre_close": None,
+                    "day_change_percent": None
+                }
+                
+        # Check watchlist
+        for w in portfolio_data.get('watchlist', []):
+            if w.get('ticker') == ticker and w.get('name'):
+                 return {
+                    "name": w['name'],
+                    "current_price": None,
+                    "pre_close": None,
+                    "day_change_percent": None
+                }
+    except Exception as e:
+        print(f"Error fetching CN info from local file: {e}")
+
     return None
 
 @app.route('/')
