@@ -8,9 +8,10 @@
         },
         {
             "ticker": "600418.SS",
-            "shares": 1300.0,
-            "cost": 50.218,
-            "group_id": "default"
+            "shares": 1200.0,
+            "cost": 49.839,
+            "group_id": "default",
+            "note": ""
         },
         {
             "ticker": "513180.SS",
@@ -89,13 +90,22 @@
         },
         {
             "ticker": "CASH",
-            "shares": 23942.0,
-            "cost": 23942.0,
+            "shares": 29319.0,
+            "cost": 29319.0,
             "group_id": "150ccad3-ba2f-4ae7-805c-479f1802893b",
             "note": ""
         }
     ],
-    "watchlist": [],
+    "watchlist": [
+        "512400.SS",
+        "516020.SS",
+        "588200.SS",
+        "512760.SS",
+        "562500.SS",
+        "159888.SZ",
+        "159819.SZ",
+        "588000.SS"
+    ],
     "groups": [
         {
             "id": "cff6b083-1dd8-41ee-8a78-11c347134c49",

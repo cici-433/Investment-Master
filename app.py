@@ -414,13 +414,17 @@ def get_watchlist():
             if cn_info and 'day_change_percent' in cn_info:
                 change_percent = cn_info['day_change_percent']
 
+            # Convert change_percent to decimal for consistency with dividend_yield in frontend
+            # Sina returns percentage (e.g. 1.5 for 1.5%), but frontend watchlist expects decimal (0.015)
+            change_percent_decimal = change_percent / 100.0
+
             enriched_watchlist.append({
                 "ticker": raw_ticker,
                 "name": name,
                 "price": current_price if current_price is not None else "N/A",
-                "pe": pe_data.get('trailing_pe', '--'),
-                "dividend_yield": pe_data.get('dividend_yield', 0),
-                "change_percent": round(change_percent, 2)
+                "pe": pe_data.get('trailing_pe') or '--',
+                "dividend_yield": pe_data.get('dividend_yield') or 0,
+                "change_percent": round(change_percent_decimal, 4)
             })
         except Exception as e:
             print(f"Error enriching watchlist {raw_ticker}: {e}")
