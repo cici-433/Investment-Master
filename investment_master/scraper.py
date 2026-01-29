@@ -4,7 +4,12 @@ import re
 import time
 import os
 import uuid
-from playwright.sync_api import sync_playwright
+
+try:
+    from playwright.sync_api import sync_playwright
+    PLAYWRIGHT_AVAILABLE = True
+except ImportError:
+    PLAYWRIGHT_AVAILABLE = False
 
 class ArticleScraper:
     def __init__(self):
@@ -42,6 +47,10 @@ class ArticleScraper:
             return self._scrape_with_playwright(url)
 
     def _scrape_with_playwright(self, url):
+        if not PLAYWRIGHT_AVAILABLE:
+            print("Playwright is not installed. Skipping advanced scraping.")
+            return {"error": "Advanced scraping (Playwright) is not available in this environment. Please install playwright to scrape complex sites like Xueqiu."}
+
         try:
             with sync_playwright() as p:
                 browser = p.chromium.launch(
