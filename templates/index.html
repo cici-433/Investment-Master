@@ -579,6 +579,41 @@
                 </div>
             </div>
 
+            <!-- Reports Section -->
+            <div class="mt-8">
+                <h2 class="text-xl font-bold text-slate-900 mb-4">相关研报</h2>
+                <div class="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
+                    <div class="overflow-x-auto max-h-96">
+                        <table class="min-w-full divide-y divide-slate-200 relative">
+                            <thead class="bg-slate-50 sticky top-0">
+                                <tr>
+                                    <th scope="col"
+                                        class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                                        日期</th>
+                                    <th scope="col"
+                                        class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                                        标题</th>
+                                    <th scope="col"
+                                        class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                                        机构</th>
+                                    <th scope="col"
+                                        class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                                        评级</th>
+                                    <th scope="col"
+                                        class="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">
+                                        操作</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-slate-200" id="reports-table-body">
+                                <tr>
+                                    <td colspan="5" class="px-6 py-4 text-center text-sm text-slate-500">等待查询...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
             <!-- Details / Terminal Output Style -->
             <div class="mt-8">
                 <h2 class="text-xl font-bold text-slate-900 mb-4">详细分析日志</h2>
@@ -1698,6 +1733,9 @@
                 logArea.innerHTML += `<p class="ml-4">买点: ¥${tangData.buy_price} (3年后市值50%折扣)</p>`;
             }
 
+            // Load Reports
+            loadReports(ticker);
+
         } catch (e) {
             console.error(e);
             logArea.innerHTML += `<p class="text-red-400">System Error: ${e.message}</p>`;
@@ -1705,6 +1743,50 @@
     }
 
     // --- Investment System Logic ---
+
+    async function loadReports(ticker) {
+        const tbody = document.getElementById('reports-table-body');
+        if (!tbody) return;
+
+        tbody.innerHTML = '<tr><td colspan="5" class="px-6 py-4 text-center text-sm text-slate-500">正在加载研报数据...</td></tr>';
+
+        try {
+            const res = await fetch(`/api/reports?ticker=${ticker}`);
+            const reports = await res.json();
+
+            tbody.innerHTML = '';
+
+            if (reports.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="px-6 py-4 text-center text-sm text-slate-500">未找到相关研报</td></tr>';
+                return;
+            }
+
+            reports.forEach(report => {
+                const row = `
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-900">${report.date}</td>
+                        <td class="px-6 py-4 text-sm text-slate-900 font-medium">
+                            <a href="${report.link}" target="_blank" class="hover:text-blue-600 hover:underline" title="${report.title}">
+                                ${report.title.length > 30 ? report.title.substring(0, 30) + '...' : report.title}
+                            </a>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500">${report.org}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
+                            <span class="px-2 py-1 bg-slate-100 rounded text-xs">${report.rating}</span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                            <a href="${report.link}" target="_blank" class="text-blue-600 hover:text-blue-900">阅读</a>
+                        </td>
+                    </tr>
+                `;
+                tbody.innerHTML += row;
+            });
+
+        } catch (e) {
+            console.error(e);
+            tbody.innerHTML = '<tr><td colspan="5" class="px-6 py-4 text-center text-sm text-red-500">研报加载失败</td></tr>';
+        }
+    }
 
     async function loadArticles() {
         console.log("loadArticles called");

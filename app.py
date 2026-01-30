@@ -199,6 +199,19 @@ def add_article():
     article = master.system_manager.add_article(title, author, content, tags)
     return jsonify({"status": "success", "article": article})
 
+@app.route('/api/reports')
+def get_reports():
+    ticker = request.args.get('ticker')
+    if not ticker:
+        return jsonify({"error": "Ticker is required"}), 400
+    try:
+        reports = master.report_manager.get_reports(ticker)
+        return jsonify(reports)
+    except Exception as e:
+        print(f"Error getting reports: {e}")
+        traceback.print_exc()
+        return jsonify([])
+
 @app.route('/api/system/scrape', methods=['POST'])
 def scrape_article():
     data = request.json

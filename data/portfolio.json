@@ -7,13 +7,6 @@
             "group_id": "363c776e-fee3-415f-a44e-e4ff84f87655"
         },
         {
-            "ticker": "600418.SS",
-            "shares": 1200.0,
-            "cost": 49.839,
-            "group_id": "default",
-            "note": ""
-        },
-        {
             "ticker": "513180.SS",
             "shares": 51400.0,
             "cost": 0.744,
@@ -93,6 +86,14 @@
             "shares": 29319.0,
             "cost": 29319.0,
             "group_id": "150ccad3-ba2f-4ae7-805c-479f1802893b",
+            "note": ""
+        },
+        {
+            "ticker": "600418.SS",
+            "shares": 1100.0,
+            "cost": 49.286,
+            "group_id": "default",
+            "name": null,
             "note": ""
         }
     ],

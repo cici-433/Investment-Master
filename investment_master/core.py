@@ -4,15 +4,17 @@ from .analysis import Analyzer
 from .portfolio_manager import PortfolioManager
 from .system_manager import SystemManager
 from .journal_manager import JournalManager
+from .report_manager import ReportManager
 
 class InvestmentMaster:
     def __init__(self):
         # self.selector = StockSelector()
         self.valuator = Valuator()
         # self.analyzer = Analyzer()
-        self.portfolio = PortfolioManager()
+        self.portfolio_manager = PortfolioManager() # Renamed to match attribute usage
         self.system_manager = SystemManager()
         self.journal_manager = JournalManager()
+        self.report_manager = ReportManager()
 
     def _normalize_ticker(self, ticker):
         """

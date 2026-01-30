@@ -8,4 +8,4 @@ beautifulsoup4
 requests
 pymongo
 gunicorn
-# playwright
+akshare
