@@ -520,4 +520,5 @@ def remove_watchlist(ticker):
     return jsonify({"error": "Failed to remove from watchlist"}), 500
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    # 允许局域网访问 (Host=0.0.0.0)
+    app.run(debug=True, host='0.0.0.0', port=5000)
