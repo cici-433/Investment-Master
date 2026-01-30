@@ -1,4 +1,4 @@
-from flask import Flask, render_template, jsonify, request
+from flask import Flask, render_template, jsonify, request, Response, stream_with_context
 from investment_master.core import InvestmentMaster
 from investment_master.scraper import ArticleScraper
 import traceback
@@ -82,7 +82,7 @@ def get_cn_stock_info(ticker):
 
     # 2. Fallback to local portfolio data
     try:
-        portfolio_data = master.portfolio_manager.load_data()
+        portfolio_data = master.portfolio.load_data()
         
         # Check holdings
         for h in portfolio_data.get('holdings', []):
@@ -465,11 +465,11 @@ def update_holding(ticker):
     
     shares = float(data.get('shares', 0))
     cost = float(data.get('cost', 0))
-    group_id = data.get('group_id')
+    group_id = data.get('group_id', 'default')
     note = data.get('note')
     name = data.get('name')
     
-    if master.portfolio.add_holding(normalized_ticker, shares, cost, group_id, note, name=name):
+    if master.portfolio.update_holding(normalized_ticker, shares, cost, group_id, note, name=name):
         return jsonify({"status": "success"})
     return jsonify({"error": "Failed to update holding"}), 500
 
@@ -533,6 +533,24 @@ def remove_watchlist(ticker):
     if master.portfolio.remove_from_watchlist(ticker):
         return jsonify({"status": "success"})
     return jsonify({"error": "Failed to remove from watchlist"}), 500
+
+@app.route('/api/reports/proxy')
+def proxy_report():
+    url = request.args.get('url')
+    if not url:
+        return "Missing URL", 400
+    
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+        "Referer": "https://data.eastmoney.com/"
+    }
+
+    try:
+        req = requests.get(url, headers=headers, stream=True)
+        return Response(stream_with_context(req.iter_content(chunk_size=1024)), content_type=req.headers['content-type'])
+    except Exception as e:
+        print(f"Proxy error: {e}")
+        return "Error fetching report", 500
 
 if __name__ == '__main__':
     # 允许局域网访问 (Host=0.0.0.0)

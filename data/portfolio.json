@@ -82,17 +82,18 @@
             "group_id": "150ccad3-ba2f-4ae7-805c-479f1802893b"
         },
         {
-            "ticker": "CASH",
-            "shares": 29319.0,
-            "cost": 29319.0,
-            "group_id": "150ccad3-ba2f-4ae7-805c-479f1802893b",
-            "note": ""
-        },
-        {
             "ticker": "600418.SS",
             "shares": 1100.0,
             "cost": 49.286,
             "group_id": "default",
+            "name": null,
+            "note": ""
+        },
+        {
+            "ticker": "CASH",
+            "shares": 34914.0,
+            "cost": 34914.0,
+            "group_id": "150ccad3-ba2f-4ae7-805c-479f1802893b",
             "name": null,
             "note": ""
         }

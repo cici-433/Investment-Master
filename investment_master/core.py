@@ -11,7 +11,7 @@ class InvestmentMaster:
         # self.selector = StockSelector()
         self.valuator = Valuator()
         # self.analyzer = Analyzer()
-        self.portfolio_manager = PortfolioManager() # Renamed to match attribute usage
+        self.portfolio = PortfolioManager()
         self.system_manager = SystemManager()
         self.journal_manager = JournalManager()
         self.report_manager = ReportManager()

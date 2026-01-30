@@ -146,6 +146,21 @@ class PortfolioManager:
         self.save_data(data)
         return True
 
+    def update_holding(self, ticker, shares, cost, group_id='default', note=None, name=None):
+        data = self.load_data()
+        # Find exact match to update
+        for h in data["holdings"]:
+            if h["ticker"] == ticker and h.get("group_id", "default") == group_id:
+                h["shares"] = shares
+                h["cost"] = cost
+                if name:
+                    h["name"] = name
+                if note is not None:
+                    h["note"] = note
+                self.save_data(data)
+                return True
+        return False
+
     def move_holding(self, ticker, target_group_id):
         data = self.load_data()
         target_base = ticker.split('.')[0]
