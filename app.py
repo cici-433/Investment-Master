@@ -438,8 +438,9 @@ def add_holding():
     cost = float(data.get('cost', 0))
     group_id = data.get('group_id', 'default')
     note = data.get('note')
+    name = data.get('name')
     
-    if master.portfolio.add_holding(ticker, shares, cost, group_id, note):
+    if master.portfolio.add_holding(ticker, shares, cost, group_id, note, name=name):
         return jsonify({"status": "success"})
     return jsonify({"error": "Failed to add holding"}), 500
 
@@ -453,8 +454,9 @@ def update_holding(ticker):
     cost = float(data.get('cost', 0))
     group_id = data.get('group_id')
     note = data.get('note')
+    name = data.get('name')
     
-    if master.portfolio.add_holding(normalized_ticker, shares, cost, group_id, note):
+    if master.portfolio.add_holding(normalized_ticker, shares, cost, group_id, note, name=name):
         return jsonify({"status": "success"})
     return jsonify({"error": "Failed to update holding"}), 500
 

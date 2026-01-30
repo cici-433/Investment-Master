@@ -113,7 +113,7 @@ class PortfolioManager:
         self.save_data(data)
         return True
 
-    def add_holding(self, ticker, shares, cost_basis, group_id='default', name=None):
+    def add_holding(self, ticker, shares, cost_basis, group_id='default', note=None, name=None):
         data = self.load_data()
         # Check if already exists in this group
         for h in data["holdings"]:
@@ -124,17 +124,21 @@ class PortfolioManager:
                 h["cost_basis"] = total_cost / h["shares"]
                 if name:
                     h["name"] = name # Update name if provided
+                if note is not None:
+                    h["note"] = note
                 self.save_data(data)
-                return
+                return True
         
         data["holdings"].append({
             "ticker": ticker,
             "shares": shares,
             "cost_basis": cost_basis,
             "group_id": group_id,
-            "name": name # Save name
+            "name": name, # Save name
+            "note": note or ""
         })
         self.save_data(data)
+        return True
 
     def move_holding(self, ticker, target_group_id):
         data = self.load_data()
@@ -169,13 +173,14 @@ class PortfolioManager:
                 if name:
                     item["name"] = name # Update name
                     self.save_data(data)
-                return # Already in watchlist
+                return True # Already in watchlist
         
         data["watchlist"].append({
             "ticker": ticker,
             "name": name # Save name
         })
         self.save_data(data)
+        return True
 
     def remove_from_watchlist(self, ticker):
         data = self.load_data()
