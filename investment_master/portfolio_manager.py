@@ -35,7 +35,7 @@ class PortfolioManager:
         # Always ensure holdings have group_id and handle cost key migration
         migrated = False
         for h in data.get("holdings", []):
-            if "group_id" not in h:
+            if "group_id" not in h or not h["group_id"]:
                 h["group_id"] = "default"
                 migrated = True
             # Migrate cost_basis -> cost
@@ -159,6 +159,22 @@ class PortfolioManager:
                     h["note"] = note
                 self.save_data(data)
                 return True
+        
+        # Fallback: Try match by Ticker only (if unique or first match)
+        # This handles cases where frontend group_id might be out of sync or default
+        candidates = [h for h in data["holdings"] if h["ticker"] == ticker]
+        if len(candidates) == 1:
+            h = candidates[0]
+            print(f"Warning: Relaxed match for {ticker}. Request group {group_id}, found {h.get('group_id')}")
+            h["shares"] = shares
+            h["cost"] = cost
+            if name:
+                h["name"] = name
+            if note is not None:
+                h["note"] = note
+            self.save_data(data)
+            return True
+
         return False
 
     def move_holding(self, ticker, target_group_id):
