@@ -203,6 +203,35 @@ class PortfolioManager:
         self.save_data(data)
         return True
 
+    def save_analysis(self, analysis_result, status="completed"):
+        data = self.load_data()
+        data["last_analysis"] = {
+            "timestamp": __import__('time').time(),
+            "content": analysis_result,
+            "status": status
+        }
+        self.save_data(data)
+        return True
+    
+    def set_analysis_status(self, status):
+        data = self.load_data()
+        if "last_analysis" not in data:
+            data["last_analysis"] = {}
+        
+        data["last_analysis"]["status"] = status
+        # If starting, clear old error/content but keep timestamp to prevent flicker? 
+        # Actually better to just set status.
+        if status == "analyzing":
+            # Update timestamp to show it's fresh
+            data["last_analysis"]["timestamp"] = __import__('time').time()
+            
+        self.save_data(data)
+        return True
+
+    def get_last_analysis(self):
+        data = self.load_data()
+        return data.get("last_analysis")
+
     def add_to_watchlist(self, ticker, name=None):
         data = self.load_data()
         for item in data["watchlist"]:

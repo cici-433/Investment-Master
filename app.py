@@ -97,7 +97,7 @@ def get_cn_stock_info(ticker):
                 
         # Check watchlist
         for w in portfolio_data.get('watchlist', []):
-            if w.get('ticker') == ticker and w.get('name'):
+            if isinstance(w, dict) and w.get('ticker') == ticker and w.get('name'):
                  return {
                     "name": w['name'],
                     "current_price": None,
@@ -308,7 +308,149 @@ def update_checklist():
         return jsonify({"status": "success"})
     return jsonify({"error": "Failed to update checklist"}), 500
 
+# --- AI Analysis Helper ---
+def call_volcengine_api(prompt, use_search=True):
+    url = "https://ark.cn-beijing.volces.com/api/v3/chat/completions"
+    api_key = "320f463e-3712-42e8-b7b7-b43c9e8e1e8b"
+    
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json"
+    }
+    
+    payload = {
+        "model": "glm-4-7-251222",
+        "messages": [
+            {
+                "role": "system",
+                "content": "You are a professional investment advisor."
+            },
+            {
+                "role": "user",
+                "content": prompt
+            }
+        ],
+        "stream": False
+    }
+
+    if use_search:
+        # Volcengine's standard chat/completions might not support the web_search tool format 
+        # in the same way as the proprietary endpoint.
+        # Disabling tools for now to ensure compatibility with the user-provided example.
+        # payload["tools"] = [
+        #     {
+        #         "type": "web_search",
+        #         "web_search": {
+        #             "enable": True
+        #         }
+        #     }
+        # ]
+        pass
+    
+    try:
+        # Increase timeout to 300s for deep analysis
+        response = requests.post(url, headers=headers, json=payload, timeout=300)
+        
+        # Check for specific ToolNotOpen error in JSON even if status is 200 (sometimes APIs do that) or 400
+        res_json = None
+        try:
+            res_json = response.json()
+        except:
+            pass
+
+        if res_json and "error" in res_json:
+            error_code = res_json["error"].get("code")
+            # If tool error, retry without tools
+            if (error_code == "ToolNotOpen" or error_code == "BadRequest") and use_search:
+                print(f"Web search failed ({error_code}), retrying without tools...")
+                return call_volcengine_api(prompt, use_search=False)
+            return f"Error from AI API: {res_json['error'].get('message', res_json)}"
+
+        if response.status_code == 200:
+            if res_json and "choices" in res_json and len(res_json["choices"]) > 0:
+                return res_json["choices"][0]["message"]["content"]
+            else:
+                return f"Error: Unexpected response format: {res_json}"
+        else:
+            return f"Error: API Request failed with status {response.status_code}: {response.text}"
+            
+    except Exception as e:
+        return f"Error calling AI API: {str(e)}"
+
 # --- Portfolio API ---
+
+@app.route('/api/portfolio/analysis', methods=['GET'])
+def get_portfolio_analysis():
+    analysis = master.portfolio.get_last_analysis()
+    return jsonify(analysis if analysis else {})
+
+import threading
+
+@app.route('/api/portfolio/analyze', methods=['POST'])
+def analyze_portfolio():
+    # Return immediately to avoid timeout
+    master.portfolio.set_analysis_status("analyzing")
+    
+    def run_analysis():
+        try:
+            # 1. Gather Portfolio Data
+            holdings = master.portfolio.get_holdings()
+            
+            portfolio_summary = []
+            for h in holdings:
+                ticker = h['ticker']
+                
+                # Enrich with price info
+                price_info = "价格未知"
+                try:
+                    # Reuse get_cn_stock_info logic
+                    info = get_cn_stock_info(ticker)
+                    if info and info.get('current_price'):
+                        price = info['current_price']
+                        change = info.get('day_change_percent', 0)
+                        price_info = f"现价 {price} (涨跌 {change:.2f}%)"
+                    elif ticker == 'CASH':
+                        price_info = "现金资产"
+                except:
+                    pass
+                    
+                portfolio_summary.append(f"- {h.get('name') or h['ticker']} ({h['ticker']}): {price_info}, 持仓 {h['shares']}股, 成本 {h['cost']}, 备注: {h.get('note', '')}")
+
+            prompt = f"""
+            请作为一位专业的投资顾问，帮我分析当前的持仓组合。
+            **我的持仓列表:**
+            {chr(10).join(portfolio_summary)}
+
+            **请提供以下分析:**
+            1. **组合健康度诊断**: 行业分布、风险敞口、是否存在过度集中？
+            2. **个股深度点评**: 逐一分析主要持仓，判断高估/低估，是否有重大基本面问题？
+            3. **改进建议与操作指南**: 买卖/加仓建议，市场环境应对策略。
+
+            请用Markdown格式输出，保持客观、犀利。
+            """
+
+            # 2. Call AI
+            ai_response = call_volcengine_api(prompt)
+            
+            if ai_response.startswith("Error"):
+                 master.portfolio.save_analysis(ai_response, status="error")
+            else:
+                 # 3. Save Result
+                 master.portfolio.save_analysis(ai_response, status="completed")
+                 
+        except Exception as e:
+            print(f"Analysis thread error: {e}")
+            master.portfolio.save_analysis(f"Analysis failed: {str(e)}", status="error")
+
+    # Start background thread
+    thread = threading.Thread(target=run_analysis)
+    thread.start()
+    
+    return jsonify({
+        "status": "accepted", 
+        "message": "Analysis started in background",
+        "timestamp": __import__('time').time()
+    })
 
 @app.route('/api/portfolio/holdings', methods=['GET'])
 def get_holdings():
