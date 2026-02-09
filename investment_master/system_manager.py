@@ -9,15 +9,80 @@ class SystemManager:
         self.storage = get_storage(data_file)
         # Ensure initial structure if empty
         data = self.load_data()
+        updated = False
         if not data.get("articles"):
-             self.save_data({"articles": []})
+             data["articles"] = []
+             updated = True
+        if not data.get("checklist"):
+             data["checklist"] = {
+                 "buy": [
+                     {"id": "1", "text": "估值检查：当前价格是否低于合理估值？安全边际是否充足？", "required": True},
+                     {"id": "2", "text": "逻辑检查：买入的核心逻辑（成长/低估/红利）是否清晰且成立？", "required": True},
+                     {"id": "3", "text": "仓位检查：单票仓位是否控制在 15% 以内？", "required": True},
+                     {"id": "4", "text": "情绪检查：是否处于非理性亢奋或恐慌状态？(避免 FOMO)", "required": True},
+                     {"id": "5", "text": "计划检查：是否已设定好止损点或分批买入计划？", "required": True}
+                 ],
+                 "sell": [
+                     {"id": "1", "text": "估值检查：价格是否严重高估（如PEG>1.5 / 历史高位）？", "required": True},
+                     {"id": "2", "text": "逻辑检查：买入逻辑是否破坏？基本面是否恶化？", "required": True},
+                     {"id": "3", "text": "机会成本：是否有更优质的标的替代？", "required": True},
+                     {"id": "4", "text": "情绪检查：是否因短期波动恐慌而卖出？", "required": True},
+                     {"id": "5", "text": "计划检查：是否达到止盈/止损目标？", "required": True}
+                 ]
+             }
+             updated = True
+        elif isinstance(data["checklist"], list):
+            # Migration: Convert old list format to new dict format
+            old_list = data["checklist"]
+            data["checklist"] = {
+                "buy": old_list,
+                "sell": [
+                     {"id": "1", "text": "估值检查：价格是否严重高估（如PEG>1.5 / 历史高位）？", "required": True},
+                     {"id": "2", "text": "逻辑检查：买入逻辑是否破坏？基本面是否恶化？", "required": True},
+                     {"id": "3", "text": "机会成本：是否有更优质的标的替代？", "required": True},
+                     {"id": "4", "text": "情绪检查：是否因短期波动恐慌而卖出？", "required": True},
+                     {"id": "5", "text": "计划检查：是否达到止盈/止损目标？", "required": True}
+                 ]
+            }
+            updated = True
+        
+        if updated:
+            self.save_data(data)
 
     def load_data(self):
         """Load system data from storage."""
         data = self.storage.load()
         if not data:
-            return {"articles": []}
+            return {"articles": [], "checklist": { "buy": [], "sell": [] }}
         return data
+
+    def get_checklist(self, type='buy'):
+        data = self.load_data()
+        checklist = data.get("checklist")
+        
+        # Handle case where checklist might be a list (legacy data not yet migrated by init)
+        if isinstance(checklist, list):
+            if type == 'buy':
+                return checklist
+            return []
+            
+        if not checklist:
+            return []
+            
+        return checklist.get(type, [])
+
+    def update_checklist(self, items, type='buy'):
+        data = self.load_data()
+        if isinstance(data["checklist"], list):
+            # Force migration if updating
+            data["checklist"] = {"buy": data["checklist"], "sell": []}
+            
+        if not data.get("checklist"):
+             data["checklist"] = {"buy": [], "sell": []}
+             
+        data["checklist"][type] = items
+        self.save_data(data)
+        return True
 
     def save_data(self, data):
         """Save system data to storage."""

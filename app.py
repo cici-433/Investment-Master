@@ -287,6 +287,27 @@ def delete_journal_entry(entry_id):
         return jsonify({"status": "success"})
     return jsonify({"error": "Failed to delete entry"}), 500
 
+@app.route('/api/system/checklist', methods=['GET'])
+def get_checklist():
+    checklist_type = request.args.get('type', 'buy')
+    return jsonify(master.system_manager.get_checklist(type=checklist_type))
+
+@app.route('/api/system/checklist', methods=['POST'])
+def update_checklist():
+    data = request.json
+    items = data.get('items')
+    checklist_type = data.get('type', 'buy')
+    
+    if items is None:
+         # Backward compatibility if user sends just the list (though frontend should be updated)
+         # Assuming if it's a list, it's items. But request.json returns the body.
+         if isinstance(data, list):
+             items = data
+    
+    if master.system_manager.update_checklist(items, type=checklist_type):
+        return jsonify({"status": "success"})
+    return jsonify({"error": "Failed to update checklist"}), 500
+
 # --- Portfolio API ---
 
 @app.route('/api/portfolio/holdings', methods=['GET'])

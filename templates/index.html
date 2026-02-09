@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Investment Master - 智能投资分析平台</title>
     <script src="https://cdn.tailwindcss.com"></script>
+
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <style>
@@ -280,7 +281,9 @@
             </div>
 
             <!-- Valuation Models Section -->
-            <h2 class="text-xl font-bold text-slate-900 mb-6">综合估值模型分析</h2>
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl font-bold text-slate-900">综合估值模型分析</h2>
+            </div>
 
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
@@ -955,12 +958,91 @@
         </div>
     </div>
 
+    <!-- Checklist Modal -->
+    <div id="checklist-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center">
+        <div class="bg-white rounded-xl shadow-lg p-6 w-[500px] max-h-[90vh] flex flex-col">
+            <div class="flex justify-between items-center mb-4 border-b border-slate-100 pb-4">
+                <h3 class="text-xl font-bold text-slate-800 flex items-center">
+                    <svg class="w-6 h-6 text-indigo-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    交易决策检查单
+                </h3>
+                <button onclick="closeChecklistModal()" class="text-slate-400 hover:text-slate-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12">
+                        </path>
+                    </svg>
+                </button>
+            </div>
+
+            <div class="flex space-x-2 mb-4">
+                <button id="tab-checklist-buy" onclick="switchChecklistTab('buy')"
+                    class="flex-1 py-2 text-center rounded-lg text-sm font-bold transition-colors bg-indigo-600 text-white shadow-sm">
+                    🟢 买入决策
+                </button>
+                <button id="tab-checklist-sell" onclick="switchChecklistTab('sell')"
+                    class="flex-1 py-2 text-center rounded-lg text-sm font-bold transition-colors bg-slate-100 text-slate-600 hover:bg-slate-200">
+                    🔴 卖出决策
+                </button>
+            </div>
+
+            <div class="mb-4 bg-indigo-50 text-indigo-700 p-3 rounded-lg text-sm" id="checklist-warning">
+                <p class="font-bold">🛑 慢就是快！请诚实回答以下问题：</p>
+            </div>
+
+            <div id="checklist-items" class="space-y-3 overflow-y-auto flex-1 p-1">
+                <!-- Items will be loaded here -->
+            </div>
+
+            <div class="mt-6 flex justify-between items-center pt-4 border-t border-slate-100">
+                <div class="text-sm text-slate-500" id="checklist-status">未通过</div>
+                <button onclick="submitChecklist()" id="btn-checklist-submit" disabled
+                    class="px-6 py-2 bg-slate-300 text-white font-bold rounded-lg cursor-not-allowed transition-colors">
+                    确认并记录决策
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Note Detail Modal -->
+    <div id="note-modal" class="fixed inset-0 bg-slate-900 bg-opacity-50 hidden flex items-center justify-center z-50">
+        <div class="bg-white rounded-xl shadow-xl max-w-5xl w-full mx-4 overflow-hidden flex flex-col h-[85vh]">
+            <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                <h3 class="font-bold text-slate-800" id="note-modal-title">投资逻辑与备注</h3>
+                <button onclick="closeNoteModal()" class="text-slate-400 hover:text-slate-600">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12">
+                        </path>
+                    </svg>
+                </button>
+            </div>
+            <div class="p-6 flex-1 overflow-hidden flex flex-col">
+                <div class="mb-2 text-sm text-slate-500" id="note-modal-subtitle"></div>
+                <textarea id="note-modal-content" placeholder="在此记录您的详细投资逻辑、估值分析或交易计划..."
+                    class="w-full flex-1 border border-slate-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:outline-none font-sans text-base leading-relaxed resize-none"></textarea>
+            </div>
+            <div class="px-6 pb-6 pt-2 flex justify-end space-x-3">
+                <button onclick="closeNoteModal()"
+                    class="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg text-sm font-medium transition-colors">
+                    取消
+                </button>
+                <button onclick="saveNote()"
+                    class="bg-blue-600 text-white px-6 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors shadow-sm">
+                    保存记录
+                </button>
+            </div>
+        </div>
+    </div>
+
 </body>
 
 </html>
 <script>
     let currentPortfolioTab = 'holdings'; // 'holdings' or 'watchlist'
     let isEditing = false;
+    let currentEditingTicker = null;
 
     function openAddModal() {
         isEditing = false;
@@ -1126,6 +1208,10 @@
             const groups = await groupsRes.json();
             const holdings = await holdingsRes.json();
 
+            // Store for global access
+            window.portfolioHoldings = {};
+            holdings.forEach(h => window.portfolioHoldings[h.ticker] = h);
+
             container.innerHTML = '';
 
             let totalAssets = 0;
@@ -1242,7 +1328,16 @@
             const isUp = h.gain >= 0;
             const colorClass = isUp ? 'text-red-600' : 'text-green-600';
             const sign = isUp ? '+' : '';
-            const weight = totalAssets > 0 ? (h.market_value / totalAssets * 100).toFixed(2) : '0.00';
+            const weightNum = totalAssets > 0 ? (h.market_value / totalAssets * 100) : 0;
+            const weight = weightNum.toFixed(2);
+
+            // Weight Warning
+            let weightClass = 'text-slate-600';
+            let weightIcon = '';
+            if (weightNum > 15) {
+                weightClass = 'text-orange-600 font-bold';
+                weightIcon = '<span class="ml-1 text-xs cursor-help" title="单只股票占比超过 15% (风险提示)">⚠️</span>';
+            }
 
             // Daily Change
             const dayChange = h.day_change_percent || 0;
@@ -1278,8 +1373,8 @@
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-right font-medium text-slate-900">
                         ${h.market_value.toLocaleString()}
                     </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-slate-600 font-medium">
-                        ${weight}%
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-right ${weightClass} font-medium">
+                        ${weight}%${weightIcon}
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-right ${colorClass} font-bold">
                         ${sign}${h.gain.toLocaleString()}
@@ -1289,12 +1384,17 @@
                         <div>${dayGainSign}${dayGain.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                         <div class="text-xs font-normal mt-0.5">${dayChangeSign}${dayChange}%</div>
                     </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500 truncate max-w-xs cursor-pointer hover:bg-slate-100" title="${h.note || ''}" onclick="toggleNote(this)">
-                        ${h.note || ''}
+                    <td class="px-6 py-4 text-sm text-slate-500 min-w-[300px] max-w-lg cursor-pointer hover:bg-slate-50 group relative" onclick="openNoteModal('${h.ticker}')">
+                        <div class="line-clamp-4 whitespace-pre-wrap text-xs leading-relaxed text-slate-600">${h.note || '<span class="text-slate-300 italic text-sm">点击添加笔记...</span>'}</div>
+                        <div class="hidden group-hover:flex absolute inset-0 items-center justify-center bg-white bg-opacity-95 text-blue-600 font-medium text-sm shadow-sm backdrop-blur-sm transition-all border-2 border-blue-100 rounded-lg m-1">
+                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                            查看完整笔记
+                        </div>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-center">
                         <a href="#" class="text-blue-600 hover:text-blue-900 mr-2 text-xs font-medium" onclick="analyzeStock('${h.ticker}'); switchTab('valuation')">分析</a>
                         <a href="#" class="text-indigo-600 hover:text-indigo-900 mr-2 text-xs font-medium" onclick="openEditModal('${h.ticker}', '${h.shares}', '${h.cost}', '${h.note || ''}', '${group.id}')">编辑</a>
+                        <a href="#" class="text-purple-600 hover:text-purple-900 mr-2 text-xs font-medium" onclick="openChecklistModal('${h.ticker}')">决策</a>
                         <a href="#" class="text-red-600 hover:text-red-900 text-xs font-medium" onclick="removeStock('${h.ticker}', 'holdings')">删除</a>
                     </td>
                 </tr>
@@ -1461,6 +1561,7 @@
                         <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium ${changeColor}">${sign}${(item.change_percent * 100).toFixed(2)}%</td>
                         <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
                             <a href="#" class="text-blue-600 hover:text-blue-900 mr-3" onclick="analyzeStock('${item.ticker}'); switchTab('valuation')">分析</a>
+                            <a href="#" class="text-purple-600 hover:text-purple-900 mr-3" onclick="openChecklistModal('${item.ticker}')">决策</a>
                             <a href="#" class="text-red-600 hover:text-red-900" onclick="removeStock('${item.ticker}', 'watchlist')">删除</a>
                         </td>
                     </tr>
@@ -2212,6 +2313,240 @@
         } catch (e) {
             console.error(e);
             alert('请求失败');
+        }
+    }
+
+    // --- Checklist Logic ---
+
+    let checklistTicker = null;
+    let checklistType = 'buy'; // 'buy' or 'sell'
+
+    async function openChecklistModal(ticker = null) {
+        checklistTicker = ticker;
+        document.getElementById('checklist-modal').classList.remove('hidden');
+        // Default to buy, or maybe smart inference? For now default to buy.
+        switchChecklistTab('buy');
+    }
+
+    function closeChecklistModal() {
+        document.getElementById('checklist-modal').classList.add('hidden');
+        checklistTicker = null;
+    }
+
+    function switchChecklistTab(type) {
+        checklistType = type;
+        const buyBtn = document.getElementById('tab-checklist-buy');
+        const sellBtn = document.getElementById('tab-checklist-sell');
+        const warning = document.getElementById('checklist-warning');
+
+        if (type === 'buy') {
+            buyBtn.className = 'flex-1 py-2 text-center rounded-lg text-sm font-bold transition-colors bg-indigo-600 text-white shadow-sm';
+            sellBtn.className = 'flex-1 py-2 text-center rounded-lg text-sm font-bold transition-colors bg-slate-100 text-slate-600 hover:bg-slate-200';
+            warning.className = 'mb-4 bg-indigo-50 text-indigo-700 p-3 rounded-lg text-sm';
+            warning.innerHTML = '<p class="font-bold">🛑 慢就是快！请确认买入逻辑：</p>';
+        } else {
+            buyBtn.className = 'flex-1 py-2 text-center rounded-lg text-sm font-bold transition-colors bg-slate-100 text-slate-600 hover:bg-slate-200';
+            sellBtn.className = 'flex-1 py-2 text-center rounded-lg text-sm font-bold transition-colors bg-red-600 text-white shadow-sm';
+            warning.className = 'mb-4 bg-red-50 text-red-700 p-3 rounded-lg text-sm';
+            warning.innerHTML = '<p class="font-bold">⚠️ 慎重决策！请确认卖出理由：</p>';
+        }
+
+        loadChecklist();
+    }
+
+    async function loadChecklist() {
+        const container = document.getElementById('checklist-items');
+        container.innerHTML = '<div class="text-center py-4 text-slate-400">加载中...</div>';
+
+        try {
+            const res = await fetch(`/api/system/checklist?type=${checklistType}`);
+            const items = await res.json();
+
+            if (items.length === 0) {
+                container.innerHTML = '<div class="text-center py-4 text-slate-400">暂无检查项</div>';
+                return;
+            }
+
+            let html = '';
+            // Add ticker info if present
+            if (checklistTicker) {
+                html += `<div class="mb-3 px-3 py-2 bg-slate-50 text-slate-700 rounded-lg text-sm font-medium border border-slate-200">针对标的: ${checklistTicker}</div>`;
+            } else {
+                // Try to fallback to current analysis stock if visible
+                const currentTicker = document.getElementById('stock-ticker').textContent.trim();
+                if (currentTicker && currentTicker !== '--') {
+                    checklistTicker = currentTicker;
+                    html += `<div class="mb-3 px-3 py-2 bg-slate-50 text-slate-700 rounded-lg text-sm font-medium border border-slate-200">针对标的: ${checklistTicker}</div>`;
+                }
+            }
+
+            items.forEach((item, index) => {
+                html += `
+                    <div class="flex items-start p-3 hover:bg-slate-50 rounded-lg transition-colors border border-transparent hover:border-slate-100">
+                        <div class="flex items-center h-5">
+                            <input id="check-item-${index}" type="checkbox" onchange="validateChecklist()"
+                                class="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500">
+                        </div>
+                        <div class="ml-3 text-sm">
+                            <label for="check-item-${index}" class="font-medium text-slate-700 select-none cursor-pointer">${item.text}</label>
+                        </div>
+                    </div>
+                `;
+            });
+            container.innerHTML = html;
+            validateChecklist(); // Initial check
+
+        } catch (e) {
+            console.error(e);
+            container.innerHTML = '<div class="text-red-500 text-center">加载失败</div>';
+        }
+    }
+
+    function validateChecklist() {
+        const checkboxes = document.querySelectorAll('#checklist-items input[type="checkbox"]');
+        const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+        const btn = document.getElementById('btn-checklist-submit');
+        const status = document.getElementById('checklist-status');
+
+        if (allChecked) {
+            btn.disabled = false;
+            btn.classList.remove('bg-slate-300', 'cursor-not-allowed');
+            const btnColor = checklistType === 'buy' ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-red-600 hover:bg-red-700';
+            // Remove old classes first to avoid conflict if switching quickly
+            btn.classList.remove('bg-indigo-600', 'hover:bg-indigo-700', 'bg-red-600', 'hover:bg-red-700');
+
+            if (checklistType === 'buy') {
+                btn.classList.add('bg-indigo-600', 'hover:bg-indigo-700');
+            } else {
+                btn.classList.add('bg-red-600', 'hover:bg-red-700');
+            }
+            btn.classList.add('shadow-lg');
+
+            status.innerHTML = '<span class="text-green-600 font-bold flex items-center">✅ 检查通过</span>';
+        } else {
+            btn.disabled = true;
+            btn.classList.add('bg-slate-300', 'cursor-not-allowed');
+            btn.classList.remove('bg-indigo-600', 'hover:bg-indigo-700', 'bg-red-600', 'hover:bg-red-700', 'shadow-lg');
+            status.innerHTML = '<span class="text-orange-500">还有未确认的项目</span>';
+        }
+    }
+
+    async function submitChecklist() {
+        const ticker = checklistTicker || document.getElementById('stock-ticker').textContent.trim();
+
+        if (!ticker || ticker === '--') {
+            alert("未识别到关联股票，请在个股分析页或持仓列表使用");
+            return;
+        }
+
+        const today = new Date().toISOString().split('T')[0];
+
+        // Create a Journal Entry
+        const actionText = checklistType === 'buy' ? '买入' : '卖出';
+        const content = `**${actionText}决策检查通过**\n\n针对标的：${ticker}\n\n我已完成${actionText}前的心理建设与逻辑检查，确认符合我的投资体系。`;
+
+        const body = {
+            title: `${actionText}决策记录: ${ticker}`,
+            date: today,
+            type: 'trade',
+            ticker: ticker,
+            content: content,
+            tags: ['纪律执行', 'Checklist', actionText]
+        };
+
+        try {
+            const res = await fetch('/api/journal/entries', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+
+            const data = await res.json();
+            if (data.status === 'success') {
+                closeChecklistModal();
+                alert(`🎉 ${actionText}决策已记录！请严格按计划执行。`);
+                // loadJournalEntries(); // if we were on journal tab, but we are on analyze tab
+            } else {
+                alert('保存失败: ' + data.error);
+            }
+        } catch (e) {
+            console.error(e);
+            alert('保存失败');
+        }
+    }
+
+    // --- Note Modal Logic ---
+
+    function openNoteModal(ticker) {
+        const h = window.portfolioHoldings[ticker];
+        if (!h) {
+            console.error('Holding not found:', ticker);
+            return;
+        }
+
+        currentEditingTicker = ticker;
+        const modal = document.getElementById('note-modal');
+        const title = document.getElementById('note-modal-title');
+        const subtitle = document.getElementById('note-modal-subtitle');
+        const textarea = document.getElementById('note-modal-content');
+
+        title.textContent = `投资逻辑与备注: ${h.name}`;
+        subtitle.textContent = `代码: ${h.ticker} | 成本: ${h.cost} | 持仓: ${h.shares}`;
+        textarea.value = h.note || '';
+
+        modal.classList.remove('hidden');
+        textarea.focus();
+    }
+
+    function closeNoteModal() {
+        document.getElementById('note-modal').classList.add('hidden');
+        currentEditingTicker = null;
+    }
+
+    async function saveNote() {
+        if (!currentEditingTicker) return;
+        const h = window.portfolioHoldings[currentEditingTicker];
+        if (!h) return;
+
+        const newNote = document.getElementById('note-modal-content').value;
+        const btn = document.querySelector('#note-modal button[onclick="saveNote()"]');
+        const originalText = btn.textContent;
+
+        btn.disabled = true;
+        btn.textContent = '保存中...';
+
+        try {
+            // Must send all fields to update_holding
+            const body = {
+                ticker: h.ticker,
+                shares: h.shares,
+                cost: h.cost,
+                group_id: h.group_id || 'default',
+                note: newNote,
+                name: h.name
+            };
+
+            const res = await fetch(`/api/portfolio/holdings/${h.ticker}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+
+            if (res.ok) {
+                // Update local cache immediately
+                h.note = newNote;
+                // Reload UI
+                loadHoldings();
+                closeNoteModal();
+            } else {
+                alert('保存失败');
+            }
+        } catch (e) {
+            console.error(e);
+            alert('请求失败');
+        } finally {
+            btn.disabled = false;
+            btn.textContent = originalText;
         }
     }
 
