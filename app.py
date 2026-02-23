@@ -455,11 +455,9 @@ def analyze_portfolio():
 @app.route('/api/portfolio/holdings', methods=['GET'])
 def get_holdings():
     holdings = master.portfolio.get_holdings()
-    # Enrich with current market data
     enriched_holdings = []
     for h in holdings:
         raw_ticker = h['ticker']
-        # Normalize ticker for API calls (e.g. 513180 -> 513180.SS)
         ticker = master._normalize_ticker(raw_ticker)
         
         try:
@@ -555,6 +553,153 @@ def get_holdings():
             enriched_holdings.append(h) # Return basic data if fetch fails
             
     return jsonify(enriched_holdings)
+
+@app.route('/api/portfolio/decision/<ticker>', methods=['GET'])
+def get_holding_decision(ticker):
+    if not ticker:
+        return jsonify({}), 400
+    decision = master.portfolio.get_decision(ticker)
+    return jsonify(decision or {})
+
+@app.route('/api/portfolio/decision/indicators', methods=['POST'])
+def save_holding_decision_indicators():
+    data = request.json or {}
+    ticker = data.get('ticker')
+    indicators = data.get('indicators', '')
+    if not ticker:
+        return jsonify({"status": "error", "error": "Ticker is required"}), 400
+    master.portfolio.save_decision_indicators(ticker, indicators or '')
+    return jsonify({"status": "success"})
+
+@app.route('/api/portfolio/decision', methods=['POST'])
+def holding_decision():
+    data = request.json or {}
+    ticker = data.get('ticker')
+    if not ticker:
+        return jsonify({"status": "error", "error": "Ticker is required"}), 400
+    
+    holdings = master.portfolio.get_holdings()
+    base = ticker.split('.')[0]
+    holding = None
+    for h in holdings:
+        ht = h.get('ticker')
+        if not ht:
+            continue
+        hb = ht.split('.')[0]
+        if ht == ticker or hb == base:
+            holding = h
+            break
+    
+    if not holding:
+        return jsonify({"status": "error", "error": "Holding not found"}), 404
+    
+    normalized = master._normalize_ticker(holding['ticker'])
+    name = holding.get('name')
+    current_price = None
+    pe_data = None
+    pb_data = None
+    cn_info = get_cn_stock_info(normalized)
+    if cn_info and not name:
+        name = cn_info.get('name')
+    
+    try:
+        current_price = master.valuator.get_current_price(normalized)
+        pe_data = master.valuator.calculate_pe(normalized)
+        import yfinance as yf
+        stock = yf.Ticker(normalized)
+        try:
+            info = stock.info
+        except:
+            info = {}
+        pb_data = master.valuator.calculate_pb_roe(normalized, info=info)
+    except Exception as e:
+        print(f"Error in decision valuation for {normalized}: {e}")
+    
+    shares = holding.get('shares', 0)
+    cost = holding.get('cost', 0)
+    gain_text = ""
+    if current_price is not None and shares and cost:
+        market_value = current_price * shares
+        cost_basis = cost * shares
+        gain = market_value - cost_basis
+        gain_percent = (gain / cost_basis) * 100 if cost_basis > 0 else 0
+        gain_text = f"当前市值约 {round(market_value, 2)} 元，浮动盈亏 {round(gain, 2)} 元，收益率 {round(gain_percent, 2)}%。"
+    
+    valuation_lines = []
+    if pe_data:
+        tp = pe_data.get("trailing_pe")
+        fp = pe_data.get("forward_pe")
+        pb = pe_data.get("price_to_book")
+        roe = pe_data.get("return_on_equity")
+        dy = pe_data.get("dividend_yield")
+        if tp:
+            valuation_lines.append(f"TTM PE 约 {round(tp, 2)} 倍")
+        if fp:
+            valuation_lines.append(f"Forward PE 约 {round(fp, 2)} 倍")
+        if pb:
+            valuation_lines.append(f"PB 约 {round(pb, 2)} 倍")
+        if roe:
+            valuation_lines.append(f"ROE 约 {round(roe * 100, 2)}%")
+        if dy:
+            dy_val = dy
+            if dy_val < 1:
+                dy_val = dy_val * 100
+            valuation_lines.append(f"股息率约 {round(dy_val, 2)}%")
+    
+    if pb_data and "error" not in pb_data:
+        margin = pb_data.get("margin")
+        fair_value = pb_data.get("fair_value")
+        buy_range = pb_data.get("buy_range_price")
+        sell_range = pb_data.get("sell_range_price")
+        if fair_value is not None:
+            valuation_lines.append(f"PB-ROE 模型合理价值约 {fair_value} 元/股")
+        if margin is not None:
+            valuation_lines.append(f"当前安全边际约 {margin}%")
+        if isinstance(buy_range, (list, tuple)) and len(buy_range) == 2:
+            valuation_lines.append(f"PB-ROE 模型建议买入区间约 {round(buy_range[0], 2)} - {round(buy_range[1], 2)} 元")
+        if isinstance(sell_range, (list, tuple)) and len(sell_range) == 2:
+            valuation_lines.append(f"PB-ROE 模型建议卖出区间约 {round(sell_range[0], 2)} - {round(sell_range[1], 2)} 元")
+    
+    valuation_summary = "暂无完整估值数据，可更多依赖你的观察指标。" 
+    if valuation_lines:
+        valuation_summary = "\n".join(f"- {line}" for line in valuation_lines)
+    
+    note_text = holding.get('note', '') or ''
+    indicators = data.get('indicators', '')
+    indicators_text = indicators.strip() if isinstance(indicators, str) else ""
+    if not indicators_text:
+        indicators_text = note_text
+    
+    prompt = f"""你是一个严格执行纪律的价值投资助手，请完全基于下面给出的“关键观察指标”和估值数据，给出当前这只股票的具体操作建议。
+
+【标的基本信息】
+- 名称: {name or '未知'}
+- 代码: {normalized}
+- 当前价格: {current_price if current_price is not None else '未知'} 元
+- 持仓成本: {cost} 元
+- 持仓数量: {shares} 股
+{gain_text}
+
+【估值与财务摘要】
+{valuation_summary}
+
+【关键观察指标与个人规则】
+{indicators_text}
+
+请你严格参考以上规则，完成以下任务:
+1. 明确给出当前建议：加仓、减仓、清仓、继续持有或暂时观望，必须给出一个主结论。
+2. 说明触发该建议的关键指标和对应阈值，指出哪些条件已经满足、哪些存在不确定。
+3. 给出执行方案：建议一次性还是分批操作，大致价格区间，以及建议的目标仓位区间。
+4. 如果结论是暂时观望，请说明下一次重点需要观察的 2-3 个指标、建议的观察频率。
+
+回答要求使用中文，Markdown 格式，结构清晰，有小标题和条目列表。"""
+    
+    ai_response = call_volcengine_api(prompt)
+    if ai_response.startswith("Error"):
+        return jsonify({"status": "error", "error": ai_response})
+    
+    ts = master.portfolio.save_decision(holding['ticker'], indicators_text, ai_response)
+    return jsonify({"status": "success", "result": ai_response, "timestamp": ts})
 
 @app.route('/api/portfolio/groups', methods=['GET'])
 def get_groups():

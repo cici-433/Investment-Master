@@ -1072,6 +1072,66 @@
         </div>
     </div>
 
+    <!-- Decision Modal -->
+    <div id="decision-modal"
+        class="fixed inset-0 bg-slate-900 bg-opacity-50 hidden flex items-center justify-center z-50">
+        <div class="bg-white rounded-xl shadow-xl max-w-5xl w-full mx-4 overflow-hidden flex flex-col h-[85vh]">
+            <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                <div>
+                    <h3 class="font-bold text-slate-800">AI 决策助手</h3>
+                    <p class="text-xs text-slate-500 mt-1" id="decision-stock-subtitle"></p>
+                </div>
+                <button onclick="closeDecisionModal()" class="text-slate-400 hover:text-slate-600">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12">
+                        </path>
+                    </svg>
+                </button>
+            </div>
+            <div class="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+                <div class="bg-slate-50 border border-slate-200 rounded-lg px-4 py-3">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <div class="text-sm font-semibold text-slate-800" id="decision-stock-title"></div>
+                            <div class="text-xs text-slate-500 mt-1" id="decision-stock-brief"></div>
+                        </div>
+                        <button id="btn-decision-ai" onclick="runDecisionAi()"
+                            class="inline-flex items-center px-4 py-2 bg-purple-600 text-white text-xs font-medium rounded-lg hover:bg-purple-700 transition-colors">
+                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                            </svg>
+                            生成 AI 决策建议
+                        </button>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="border border-slate-200 rounded-lg h-[52vh] flex flex-col">
+                        <div
+                            class="px-4 py-2 border-b border-slate-100 bg-slate-50 text-xs font-semibold text-slate-600">
+                            观察指标与投资备注
+                        </div>
+                        <div class="flex-1 px-4 py-3">
+                            <textarea id="decision-indicators"
+                                class="w-full h-full border border-slate-200 rounded-lg text-xs leading-relaxed text-slate-700 font-mono resize-none focus:ring-1 focus:ring-purple-500 focus:outline-none p-3"
+                                placeholder="建议将你的「关键观察指标表」整理写在这里，AI 会结合这些规则与估值数据给出操作建议。"></textarea>
+                        </div>
+                    </div>
+                    <div class="border border-slate-200 rounded-lg h-[52vh] flex flex-col">
+                        <div
+                            class="px-4 py-2 border-b border-slate-100 bg-slate-50 text-xs font-semibold text-slate-600 flex justify-between items-center">
+                            <span>AI 决策建议</span>
+                            <span class="text-[10px] text-slate-400" id="decision-tip"></span>
+                        </div>
+                        <div class="flex-1 overflow-y-auto px-4 py-3" id="decision-result">
+                            <div class="text-xs text-slate-400">点击上方按钮，AI 会结合你的观察指标与估值数据给出建议。</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
 </body>
 
 </html>
@@ -1430,7 +1490,7 @@
                     <td class="px-6 py-4 whitespace-nowrap text-center">
                         <a href="#" class="text-blue-600 hover:text-blue-900 mr-2 text-xs font-medium" onclick="analyzeStock('${h.ticker}'); switchTab('valuation')">分析</a>
                         <a href="#" class="text-indigo-600 hover:text-indigo-900 mr-2 text-xs font-medium" onclick="openEditModal('${h.ticker}', '${h.shares}', '${h.cost}', '${h.note || ''}', '${group.id}')">编辑</a>
-                        <a href="#" class="text-purple-600 hover:text-purple-900 mr-2 text-xs font-medium" onclick="openChecklistModal('${h.ticker}')">决策</a>
+                        <a href="#" class="text-purple-600 hover:text-purple-900 mr-2 text-xs font-medium" onclick="openDecisionModal('${h.ticker}')">决策</a>
                         <a href="#" class="text-red-600 hover:text-red-900 text-xs font-medium" onclick="removeStock('${h.ticker}', 'holdings')">删除</a>
                     </td>
                 </tr>
@@ -2539,6 +2599,132 @@
         currentEditingTicker = null;
     }
 
+    let decisionTicker = null;
+    let decisionInitialIndicators = '';
+
+    async function openDecisionModal(ticker) {
+        decisionTicker = ticker;
+        const modal = document.getElementById('decision-modal');
+        const title = document.getElementById('decision-stock-title');
+        const subtitle = document.getElementById('decision-stock-subtitle');
+        const brief = document.getElementById('decision-stock-brief');
+        const indicatorsEl = document.getElementById('decision-indicators');
+        const resultEl = document.getElementById('decision-result');
+        const tipEl = document.getElementById('decision-tip');
+
+        const h = window.portfolioHoldings ? window.portfolioHoldings[ticker] : null;
+
+        if (h) {
+            title.textContent = `${h.name || ticker} (${ticker})`;
+            subtitle.textContent = `持仓 ${h.shares} 股 | 成本 ${h.cost}`;
+            brief.textContent = '可以在左侧直接编辑你的「关键观察指标表」，AI 会结合这些规则和估值数据给出操作建议。';
+            indicatorsEl.value = h.note || '';
+        } else {
+            title.textContent = ticker;
+            subtitle.textContent = '';
+            brief.textContent = '';
+            indicatorsEl.value = '';
+        }
+
+        resultEl.innerHTML = '<div class="text-xs text-slate-400">点击上方按钮，AI 会结合你的观察指标与估值数据给出建议。</div>';
+        tipEl.textContent = '决策只会保存在本地系统，不会下单交易。';
+
+        const btn = document.getElementById('btn-decision-ai');
+        btn.disabled = false;
+        btn.innerHTML = '<svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>生成 AI 决策建议';
+
+        modal.classList.remove('hidden');
+
+        decisionInitialIndicators = indicatorsEl.value;
+
+        try {
+            const res = await fetch(`/api/portfolio/decision/${ticker}`);
+            if (res.ok) {
+                const data = await res.json();
+                if (data && (data.indicators || data.result)) {
+                    if (data.indicators) {
+                        indicatorsEl.value = data.indicators;
+                    }
+                    if (data.result) {
+                        renderDecisionContent(data.result);
+                    }
+                    if (data.timestamp) {
+                        const d = new Date(data.timestamp * 1000);
+                        tipEl.textContent = `最近一次 AI 决策：${d.toLocaleString()}`;
+                    }
+                }
+            }
+        } catch (e) {
+            console.error('Failed to load last decision', e);
+        }
+
+        decisionInitialIndicators = indicatorsEl.value;
+    }
+
+    async function closeDecisionModal() {
+        const modal = document.getElementById('decision-modal');
+        const indicatorsEl = document.getElementById('decision-indicators');
+        const currentVal = indicatorsEl.value;
+
+        if (decisionTicker && currentVal !== decisionInitialIndicators) {
+            try {
+                await fetch('/api/portfolio/decision/indicators', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        ticker: decisionTicker,
+                        indicators: currentVal
+                    })
+                });
+            } catch (e) {
+                console.error('Failed to auto-save decision indicators', e);
+            }
+        }
+
+        modal.classList.add('hidden');
+        decisionTicker = null;
+        decisionInitialIndicators = '';
+    }
+
+    async function runDecisionAi() {
+        if (!decisionTicker) return;
+        const btn = document.getElementById('btn-decision-ai');
+        const resultEl = document.getElementById('decision-result');
+        const indicatorsEl = document.getElementById('decision-indicators');
+
+        btn.disabled = true;
+        btn.innerHTML = '<svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>生成中...';
+        resultEl.innerHTML = '<div class="flex flex-col items-center justify-center py-8"><div class="animate-spin rounded-full h-10 w-10 border-b-2 border-purple-600 mb-3"></div><p class="text-xs text-slate-500">AI 正在根据你的观察指标和估值数据生成决策建议...</p></div>';
+
+        try {
+            const res = await fetch('/api/portfolio/decision', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    ticker: decisionTicker,
+                    indicators: indicatorsEl.value
+                })
+            });
+            const data = await res.json();
+            if (data.status === 'success') {
+                renderDecisionContent(data.result);
+                if (data.timestamp) {
+                    const tipEl = document.getElementById('decision-tip');
+                    const d = new Date(data.timestamp * 1000);
+                    tipEl.textContent = `最近一次 AI 决策：${d.toLocaleString()}`;
+                }
+                decisionInitialIndicators = indicatorsEl.value;
+            } else {
+                resultEl.innerHTML = `<div class="text-red-500 text-xs border border-red-200 rounded bg-red-50 p-3">调用失败：${data.error || '未知错误'}</div>`;
+            }
+        } catch (e) {
+            resultEl.innerHTML = `<div class="text-red-500 text-xs border border-red-200 rounded bg-red-50 p-3">请求异常：${e.message}</div>`;
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>生成 AI 决策建议';
+        }
+    }
+
     async function saveNote() {
         if (!currentEditingTicker) return;
         const h = window.portfolioHoldings[currentEditingTicker];
@@ -2686,6 +2872,15 @@
 
     function renderAiContent(markdown) {
         const contentDiv = document.getElementById('ai-analysis-content');
+        if (typeof marked !== 'undefined') {
+            contentDiv.innerHTML = marked.parse(markdown);
+        } else {
+            contentDiv.innerText = markdown;
+        }
+    }
+
+    function renderDecisionContent(markdown) {
+        const contentDiv = document.getElementById('decision-result');
         if (typeof marked !== 'undefined') {
             contentDiv.innerHTML = marked.parse(markdown);
         } else {

@@ -14,7 +14,8 @@ class PortfolioManager:
          initial_data = {
             "holdings": [],
             "watchlist": [],
-            "groups": [{"id": "default", "name": "默认分组"}]
+            "groups": [{"id": "default", "name": "默认分组"}],
+            "decisions": {}
          }
          self.save_data(initial_data)
 
@@ -25,15 +26,23 @@ class PortfolioManager:
             return {
                 "holdings": [], 
                 "watchlist": [],
-                "groups": [{"id": "default", "name": "默认分组"}]
+                "groups": [{"id": "default", "name": "默认分组"}],
+                "decisions": {}
             }
             
+        migrated = False
+
         # Migration: Ensure groups exist
         if "groups" not in data:
             data["groups"] = [{"id": "default", "name": "默认分组"}]
+            migrated = True
+
+        # Migration: Ensure decisions container exists
+        if "decisions" not in data:
+            data["decisions"] = {}
+            migrated = True
         
         # Always ensure holdings have group_id and handle cost key migration
-        migrated = False
         for h in data.get("holdings", []):
             if "group_id" not in h or not h["group_id"]:
                 h["group_id"] = "default"
@@ -202,6 +211,47 @@ class PortfolioManager:
         ]
         self.save_data(data)
         return True
+
+    def save_decision(self, ticker, indicators, result):
+        data = self.load_data()
+        if "decisions" not in data or not isinstance(data["decisions"], dict):
+            data["decisions"] = {}
+        ts = __import__('time').time()
+        data["decisions"][ticker] = {
+            "indicators": indicators,
+            "result": result,
+            "timestamp": ts
+        }
+        self.save_data(data)
+        return ts
+
+    def save_decision_indicators(self, ticker, indicators):
+        data = self.load_data()
+        if "decisions" not in data or not isinstance(data["decisions"], dict):
+            data["decisions"] = {}
+        entry = data["decisions"].get(ticker)
+        if entry is None:
+            entry = {
+                "indicators": indicators,
+                "result": "",
+                "timestamp": None
+            }
+        else:
+            entry["indicators"] = indicators
+        data["decisions"][ticker] = entry
+        self.save_data(data)
+        return True
+
+    def get_decision(self, ticker):
+        data = self.load_data()
+        decisions = data.get("decisions", {})
+        if ticker in decisions:
+            return decisions[ticker]
+        base = ticker.split('.')[0]
+        for k, v in decisions.items():
+            if k.split('.')[0] == base:
+                return v
+        return None
 
     def save_analysis(self, analysis_result, status="completed"):
         data = self.load_data()
