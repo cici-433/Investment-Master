@@ -770,14 +770,23 @@ def holding_decision():
     normalized = master._normalize_ticker(holding['ticker'])
     name = holding.get('name')
     current_price = None
+    market_cap_str = "未知"
     pe_data = None
     pb_data = None
+    
+    # 1. Try to get basic info (Price, Name) from CN API first (faster/more reliable for A-shares)
     cn_info = get_cn_stock_info(normalized)
-    if cn_info and not name:
-        name = cn_info.get('name')
+    if cn_info:
+        if not name:
+            name = cn_info.get('name')
+        if cn_info.get('current_price'):
+            current_price = cn_info.get('current_price')
     
     try:
-        current_price = master.valuator.get_current_price(normalized)
+        # 2. If price still missing, try Valuator
+        if current_price is None:
+            current_price = master.valuator.get_current_price(normalized)
+            
         pe_data = master.valuator.calculate_pe(normalized)
         import yfinance as yf
         stock = yf.Ticker(normalized)
@@ -785,6 +794,15 @@ def holding_decision():
             info = stock.info
         except:
             info = {}
+            
+        # Extract Market Cap
+        mcap = info.get('marketCap')
+        if mcap:
+            if mcap > 100000000:
+                market_cap_str = f"{mcap / 100000000:.2f} 亿"
+            else:
+                market_cap_str = f"{mcap / 10000:.2f} 万"
+                
         pb_data = master.valuator.calculate_pb_roe(normalized, info=info)
     except Exception as e:
         print(f"Error in decision valuation for {normalized}: {e}")
@@ -850,6 +868,7 @@ def holding_decision():
 - 名称: {name or '未知'}
 - 代码: {normalized}
 - 当前价格: {current_price if current_price is not None else '未知'} 元
+- 总市值: {market_cap_str}
 - 持仓成本: {cost} 元
 - 持仓数量: {shares} 股
 {gain_text}
