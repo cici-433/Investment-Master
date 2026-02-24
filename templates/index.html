@@ -2302,7 +2302,7 @@
                                         </div>
                                     </div>
                                     
-                                    <div class="text-slate-600 text-sm whitespace-pre-wrap leading-relaxed">${entry.content}</div>
+                                    <div class="text-slate-600 text-sm leading-relaxed markdown-content">${marked.parse(entry.content)}</div>
                                     
                                     ${entry.tags && entry.tags.length > 0 ? `
                                         <div class="mt-4 flex flex-wrap gap-2">
