@@ -956,7 +956,7 @@
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">类型</label>
-                        <select id="journal-type"
+                        <select id="journal-type" onchange="onJournalTypeChange()"
                             class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
                             <option value="note">随笔记录</option>
                             <option value="trade">交易决策</option>
@@ -979,7 +979,13 @@
                 </div>
 
                 <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-1">内容</label>
+                    <div class="flex items-center justify-between mb-1">
+                        <label class="block text-sm font-medium text-slate-700">内容</label>
+                        <button id="btn-generate-review" type="button" onclick="generateDailyReview()"
+                            class="text-xs text-blue-600 hover:text-blue-800 hidden">
+                            AI 生成当日复盘
+                        </button>
+                    </div>
                     <textarea id="journal-content" rows="8" placeholder="写下你的思考..."
                         class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none font-sans"></textarea>
                 </div>
@@ -2330,6 +2336,7 @@
         document.getElementById('journal-ticker').value = '';
         document.getElementById('journal-title').value = '';
         document.getElementById('journal-content').value = '';
+        onJournalTypeChange();
     }
 
     async function openEditJournalModal(id) {
@@ -2349,6 +2356,7 @@
                 document.getElementById('journal-title').value = entry.title;
                 document.getElementById('journal-content').value = entry.content;
             }
+            onJournalTypeChange();
         } catch (e) {
             console.error(e);
             alert('加载日志详情失败');
@@ -2357,6 +2365,48 @@
 
     function closeAddJournalModal() {
         document.getElementById('add-journal-modal').classList.add('hidden');
+    }
+
+    function onJournalTypeChange() {
+        const typeEl = document.getElementById('journal-type');
+        const btn = document.getElementById('btn-generate-review');
+        if (!typeEl || !btn) return;
+        if (typeEl.value === 'review') {
+            btn.classList.remove('hidden');
+        } else {
+            btn.classList.add('hidden');
+        }
+    }
+
+    async function generateDailyReview() {
+        const btn = document.getElementById('btn-generate-review');
+        const contentEl = document.getElementById('journal-content');
+        const dateEl = document.getElementById('journal-date');
+        if (!btn || !contentEl || !dateEl) return;
+        const originalText = btn.textContent;
+        btn.disabled = true;
+        btn.textContent = '生成中...';
+        try {
+            const res = await fetch('/api/journal/daily_review', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ date: dateEl.value })
+            });
+            const data = await res.json();
+            if (data && data.status === 'success' && data.content) {
+                contentEl.value = data.content;
+            } else if (data && data.error) {
+                alert('生成失败: ' + data.error);
+            } else {
+                alert('生成失败: 未知错误');
+            }
+        } catch (e) {
+            console.error(e);
+            alert('请求失败');
+        } finally {
+            btn.disabled = false;
+            btn.textContent = originalText;
+        }
     }
 
     async function saveJournalEntry() {

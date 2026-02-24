@@ -287,6 +287,158 @@ def delete_journal_entry(entry_id):
         return jsonify({"status": "success"})
     return jsonify({"error": "Failed to delete entry"}), 500
 
+@app.route('/api/journal/daily_review', methods=['POST'])
+def generate_daily_review():
+    data = request.json or {}
+    date = data.get('date')
+    benchmark_ticker = data.get('benchmark') or '000001.SS'
+    holdings = master.portfolio.get_holdings()
+    enriched = []
+    total_prev = 0.0
+    total_curr = 0.0
+    for h in holdings:
+        raw_ticker = h.get('ticker')
+        if not raw_ticker:
+            continue
+        ticker = master._normalize_ticker(raw_ticker)
+        if ticker == 'CASH':
+            continue
+        shares = float(h.get('shares') or 0)
+        name = h.get('name') or raw_ticker
+        cn_info = get_cn_stock_info(ticker)
+        current_price = None
+        pre_close = None
+        day_change_percent = 0.0
+        if cn_info:
+            current_price = cn_info.get('current_price')
+            pre_close = cn_info.get('pre_close')
+            v = cn_info.get('day_change_percent')
+            if v is not None:
+                day_change_percent = float(v)
+        if current_price in (None, 0):
+            try:
+                cp = master.valuator.get_current_price(ticker)
+            except Exception:
+                cp = None
+            if cp is not None:
+                current_price = cp
+        if pre_close is None and current_price is not None and day_change_percent:
+            pre_close = current_price / (1 + day_change_percent / 100)
+        if current_price is not None and pre_close is not None and shares > 0:
+            prev_value = pre_close * shares
+            curr_value = current_price * shares
+            contribution = curr_value - prev_value
+            total_prev += prev_value
+            total_curr += curr_value
+        else:
+            prev_value = 0.0
+            curr_value = 0.0
+            contribution = 0.0
+        note = h.get('note') or ''
+        short_note = note.replace('\n', ' ')
+        if len(short_note) > 80:
+            short_note = short_note[:80] + '...'
+        enriched.append({
+            "name": name,
+            "ticker": raw_ticker,
+            "shares": shares,
+            "current_price": current_price,
+            "pre_close": pre_close,
+            "day_change_percent": day_change_percent,
+            "prev_value": prev_value,
+            "curr_value": curr_value,
+            "contribution": contribution,
+            "group_id": h.get("group_id", "default"),
+            "note": short_note
+        })
+    if total_prev > 0:
+        portfolio_return = (total_curr - total_prev) / total_prev * 100
+    else:
+        portfolio_return = 0.0
+    benchmark_info = get_cn_stock_info(benchmark_ticker)
+    benchmark_name = benchmark_ticker
+    benchmark_change = None
+    if benchmark_info:
+        if benchmark_info.get('name'):
+            benchmark_name = benchmark_info.get('name')
+        v = benchmark_info.get('day_change_percent')
+        if v is not None:
+            benchmark_change = float(v)
+    enriched_sorted = sorted(enriched, key=lambda x: abs(x.get('contribution', 0)), reverse=True)
+    top_lines = []
+    for i, item in enumerate(enriched_sorted):
+        if i >= 6:
+            break
+        line = f"- {item['name']} ({item['ticker']}): 涨跌 {item['day_change_percent']:.2f}%, 市值约 {item['curr_value']:.0f} 元, 当日盈亏约 {item['contribution']:.0f} 元, 备注: {item['note']}"
+        top_lines.append(line)
+    holdings_lines = []
+    for item in enriched:
+        if item['curr_value'] == 0 and item['prev_value'] == 0:
+            continue
+        line = f"- {item['name']} ({item['ticker']}): 涨跌 {item['day_change_percent']:.2f}%, 市值约 {item['curr_value']:.0f} 元, 当日盈亏约 {item['contribution']:.0f} 元, 备注: {item['note']}"
+        holdings_lines.append(line)
+    date_str = date or ''
+    prompt = f"""
+你是一位专业投资顾问，擅长用通俗、结构化的语言写每日复盘日志。
+
+本次任务分为两部分，请合并写成一篇完整的复盘稿，方便我直接粘贴到“复盘日志”中。
+
+一、组合相对大盘表现
+
+1. 基本信息
+- 复盘日期: {date_str if date_str else "今天"}
+- 组合昨日总市值约: {total_prev:.0f} 元
+- 组合今日总市值约: {total_curr:.0f} 元
+- 组合当日涨跌幅约: {portfolio_return:.2f}%
+
+2. 大盘表现
+- 基准指数: {benchmark_name} ({benchmark_ticker})
+- 当日涨跌幅约: {benchmark_change if benchmark_change is not None else "未知"}%
+
+3. 主要持仓当日表现概览
+{"".join([chr(10) + l for l in top_lines]) if top_lines else "暂无有效数据"}
+
+请先用一两段话总结今天“我的组合”和“基准指数”谁跑赢、谁落后，大致差距多少，属于正常波动还是需要警惕的偏离，并从仓位结构、行业集中度、赛道风格、单日事件等角度给出可能原因。
+
+二、大盘盘面复盘（模仿成熟公众号风格）
+
+请你参考下面的写作风格要点，像我常看的那类复盘公众号一样写一段大盘复盘：
+
+- 开头用一两句话做情绪安抚或观点总括，例如类似“都说买在低点，哪里是低点？用好策略挽救一切追高套牢，就这样。”这种语气。
+- 采用“1、2、3...”编号的小标题，逐个拆解几个关键板块或主线（可以结合今天持仓相关方向，例如：恒生科技/互联网、周期方向（工程机械、有色）、防御方向（医药、非银金融）、贵金属等），对每个方向说明：
+  1）今天大致涨跌和所处位置（新高/新低/重要支撑附近）
+  2）背后的核心逻辑：流动性、基本面、政策预期、海外市场、地缘政治等
+  3）接下来大致的性价比判断：是“可以补仓”“逢高做仓位管理”，还是“继续等待”
+- 中间部分可以适当点名解释，为什么今天我的组合会有这样的表现，和大盘的偏离来自哪里。
+- 结尾用一小段话总结今天的应对策略，包括：
+  - 可以逐步关注或补仓的方向
+  - 需要保持耐心观望的方向
+  - 仓位管理和情绪管理上的提醒
+- 整体语气要理性、克制，不预测短期精确点位，多强调“仓位、节奏、风险偏好”，并在最后加一句类似“以上仅为个人投资体会，不构成任何投资建议，投资有风险，入市需谨慎”的免责声明。
+
+输出要求:
+- 使用中文
+- 使用 Markdown 格式，小标题用“##”“###”等
+- 结构清晰、条理分明，方便我直接复制作为当日复盘日志。
+
+以下是更完整的持仓当日表现数据，供你参考分析:
+{"".join([chr(10) + l for l in holdings_lines]) if holdings_lines else "暂无持仓数据"}
+"""
+    ai_response = call_volcengine_api(prompt)
+    if isinstance(ai_response, str) and ai_response.startswith("Error"):
+        return jsonify({"status": "error", "error": ai_response}), 500
+    return jsonify({
+        "status": "success",
+        "content": ai_response,
+        "portfolio_return": portfolio_return,
+        "benchmark": {
+            "ticker": benchmark_ticker,
+            "name": benchmark_name,
+            "day_change_percent": benchmark_change
+        },
+        "timestamp": __import__('time').time()
+    })
+
 @app.route('/api/system/checklist', methods=['GET'])
 def get_checklist():
     checklist_type = request.args.get('type', 'buy')
