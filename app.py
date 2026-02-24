@@ -385,8 +385,18 @@ def generate_daily_review():
         diff = portfolio_return - benchmark_change
         relative_perf = f"{diff:.2f}%"
 
+    # Calculate top gainer and loser
+    active_holdings = [h for h in enriched if h['curr_value'] > 0]
+    sorted_by_change = sorted(active_holdings, key=lambda x: x.get('day_change_percent', 0), reverse=True)
+    top_gainer = sorted_by_change[0] if sorted_by_change else None
+    top_loser = sorted_by_change[-1] if sorted_by_change else None
+    
+    gainer_info = f"{top_gainer['name']} (涨幅 {top_gainer['day_change_percent']:.2f}%)" if top_gainer else "无"
+    loser_info = f"{top_loser['name']} (跌幅 {top_loser['day_change_percent']:.2f}%)" if top_loser else "无"
+
     prompt = f"""
-你是一位成熟的个人投资者（类似“ETF拯救世界”或“孟岩”的风格），擅长写每日复盘日志。你的风格是：**理性、平和、不预测市场、注重策略与纪律**。
+你是一位成熟的个人投资者（类似“ETF拯救世界”或“孟岩”的风格），同时借鉴了“女娲补仓”的犀利点评风格。
+你的风格核心是：**理性、平和、不预测市场、但对板块强弱有明确的策略判断**。
 
 请根据以下数据，写一篇今天的复盘日志。
 
@@ -394,8 +404,10 @@ def generate_daily_review():
 - 日期: {date_str if date_str else "今天"}
 - 我的收益: {portfolio_return:.2f}% (跑赢大盘 {relative_perf})
 - 基准({benchmark_name}): {benchmark_change if benchmark_change is not None else "未知"}%
+- 领涨持仓: {gainer_info}
+- 领跌持仓: {loser_info}
 - 核心持仓:
-{"".join([chr(10) + l for l in top_lines]) if top_lines else "暂无有效数据"}
+{"" .join([chr(10) + l for l in top_lines]) if top_lines else "暂无有效数据"}
 
 【写作要求】
 1. **标题**: 自拟一个有点“佛系”但有观点的标题（例如：“大涨之后，聊聊风险”、“又是无聊震荡的一天”）。
@@ -411,16 +423,26 @@ def generate_daily_review():
    - 点评1-2个热门板块（如科技、白酒、新能源），但要用**估值**和**情绪**的视角，而不是技术分析。
    - 语气要像老朋友聊天，多用短句。
    - 核心观点：涨了不狂，跌了不慌，盈亏同源。
-4. **第三部分：操作与策略**
+4. **第三部分：板块强弱与策略 (仿“女娲补仓”风格)**
+   - **重点分析**今日涨跌幅最剧烈的两个方向：
+   - **领涨方向 ({gainer_info})**：
+     - 为什么涨？是反转还是反弹？
+     - 策略建议：是该“适度止盈”、“减仓换基”还是“继续持有”？给出明确的理由（如“仓位重建议减点”、“还在低位拿住不动”）。
+   - **领跌方向 ({loser_info})**：
+     - 为什么跌？是错杀还是基本面恶化？
+     - 策略建议：是“机会是跌出来的”可以补仓，还是“趋势坏了”要止损？
+     - 语气要犀利一点，直接给干货。
+5. **第四部分：操作与策略 (整体)**
    - 结合今天的行情，给出接下来的应对心态。
    - 强调：**“不预测，只应对”**。
-   - 如果今天涨了，提醒“适度止盈”或“拿住好筹码”；如果跌了，提醒“机会是跌出来的”。
-5. **结尾**: 一句“鸡汤”或“定心丸”，加上标准免责声明。
+   - 总结今天的操作思考（如果有）。
+6. **结尾**: 一句“鸡汤”或“定心丸”，加上标准免责声明。
 
 【语气示例】
 - “市场永远是对的，错的只有我们自己。”
 - “今天这个走势，估计不少人又坐不住了。”
 - “慢慢变富，才是最快的捷径。”
+- “关于XX板块，我的建议很明确：人多的地方不要去。”
 
 请按上述风格输出 Markdown 格式。
 """
