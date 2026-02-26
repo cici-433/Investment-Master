@@ -40,12 +40,14 @@ class Valuator:
             return {"sector": "Healthcare", "industry": "Healthcare"}
         if any(x in name for x in ['证券', '券商', '金融', '银行', '保险']):
             return {"sector": "Financial Services", "industry": "Financial Services"}
-        if any(x in name for x in ['芯片', '半导体', '电子', '科技', '计算机', 'AI', '人工智能', '软件', '信息']):
+        if any(x in name for x in ['芯片', '半导体', '电子', '科技', '计算机', 'AI', '人工智能', '软件', '信息', '通信', '互联']):
             return {"sector": "Technology", "industry": "Technology"}
-        if any(x in name for x in ['消费', '酒', '家电', '食品', '饮料', '乳']):
+        if any(x in name for x in ['消费', '酒', '家电', '食品', '饮料', '乳', '养殖', '农']):
             return {"sector": "Consumer Defensive", "industry": "Consumer Defensive"}
-        if any(x in name for x in ['军工', '国防', '航天', '航空']):
-            return {"sector": "Industrials", "industry": "Aerospace & Defense"}
+        if any(x in name for x in ['传媒', '游戏', '影视']):
+            return {"sector": "Communication Services", "industry": "Internet Content & Information"}
+        if any(x in name for x in ['军工', '国防', '航天', '航空', '机械', '基建', '建筑', '工程', '物流', '运输', '制造', '装备']):
+            return {"sector": "Industrials", "industry": "Industrials"}
         if any(x in name for x in ['新能源', '光伏', '电池', '车', '汽车', '锂']):
             return {"sector": "Consumer Cyclical", "industry": "Auto Manufacturers"}
         if any(x in name for x in ['石油', '煤炭', '能源', '石化']):
@@ -54,6 +56,8 @@ class Valuator:
             return {"sector": "Real Estate", "industry": "Real Estate"}
         if any(x in name for x in ['黄金', '铜', '铝', '矿', '材']):
             return {"sector": "Basic Materials", "industry": "Metals & Mining"}
+        if any(x in name for x in ['电力', '环保', '水务', '燃气']):
+            return {"sector": "Utilities", "industry": "Utilities"}
             
         # Specific to ETFs
         if 'ETF' in name or '基金' in name:

@@ -736,41 +736,12 @@ def get_holdings():
         raw_ticker = h['ticker']
         ticker = master._normalize_ticker(raw_ticker)
         
-        # --- Sector/Industry Enrichment (Lazy Load) ---
-        sector = h.get('sector')
-        industry = h.get('industry')
-        
-        # If missing, fetch and save (only for valid tickers, not CASH)
-        if ticker != 'CASH' and (not sector or not industry or sector == 'Unknown'):
-            try:
-                # Use a short timeout or async if possible, but here we block briefly
-                # Only fetch if we haven't tried recently (optional optimization, skip for now)
-                print(f"Fetching sector info for {ticker}...")
-                info = master.valuator.get_sector_info(ticker)
-                if info:
-                    sector = info.get('sector')
-                    industry = info.get('industry')
-                    # Save to DB so we don't fetch again
-                    master.portfolio.update_holding_metadata(raw_ticker, {
-                        "sector": sector,
-                        "industry": industry
-                    })
-            except Exception as e:
-                print(f"Error enriching sector for {ticker}: {e}")
-
-        # Translate
-        sector_cn = SECTOR_MAP.get(sector, sector) if sector else "未知板块"
-        industry_cn = INDUSTRY_MAP.get(industry, industry) if industry else "未知行业"
-        
         try:
             if ticker == 'CASH':
                 current_price = 1.0
                 name = '现金 (CNY)'
-                market_value = h['shares'] # For Cash, shares stores the amount
+                market_value = h['shares']
                 cost_basis = h['cost']
-                # Usually cash gain is 0 unless tracking currency. 
-                # Or user might input cost as original deposit amount and shares as current balance.
-                # Let's assume shares = current balance, cost = original principle.
                 gain = market_value - cost_basis
                 gain_percent = (gain / cost_basis) * 100 if cost_basis > 0 else 0
                 
@@ -807,6 +778,32 @@ def get_holdings():
                 current_price = cn_info.get('current_price')
                 pre_close = cn_info.get('pre_close')
                 day_change_percent = cn_info.get('day_change_percent', 0.0)
+            
+            # --- Sector/Industry Enrichment (Lazy Load) ---
+            sector = h.get('sector')
+            industry = h.get('industry')
+            
+            # If missing, fetch and save (only for valid tickers)
+            # Use the fetched name for better guessing if yfinance fails
+            if ticker != 'CASH' and (not sector or not industry or sector == 'Unknown'):
+                try:
+                    # Only fetch if we haven't tried recently (optional optimization, skip for now)
+                    print(f"Fetching sector info for {ticker} ({name})...")
+                    info = master.valuator.get_sector_info(ticker, name)
+                    if info:
+                        sector = info.get('sector')
+                        industry = info.get('industry')
+                        # Save to DB so we don't fetch again
+                        master.portfolio.update_holding_metadata(raw_ticker, {
+                            "sector": sector,
+                            "industry": industry
+                        })
+                except Exception as e:
+                    print(f"Error enriching sector for {ticker}: {e}")
+
+            # Translate
+            sector_cn = SECTOR_MAP.get(sector, sector) if sector else "未知板块"
+            industry_cn = INDUSTRY_MAP.get(industry, industry) if industry else "未知行业"
             
             # 2. Fallback to Valuator (yfinance) if price missing
             if current_price is None:
