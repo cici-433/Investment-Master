@@ -201,6 +201,21 @@ class PortfolioManager:
         print("DEBUG: No match found in holdings")
         return False
 
+    def update_holding_metadata(self, ticker, metadata):
+        """Update metadata (sector, industry, etc.) for a holding."""
+        data = self.load_data()
+        updated = False
+        for h in data["holdings"]:
+            if h["ticker"] == ticker:
+                for k, v in metadata.items():
+                    h[k] = v
+                updated = True
+        
+        if updated:
+            self.save_data(data)
+            return True
+        return False
+
     def remove_holding(self, ticker):
         data = self.load_data()
         # Remove by exact match or base match

@@ -5,6 +5,66 @@ class Valuator:
     def __init__(self):
         pass
 
+    def get_sector_info(self, ticker, name=None):
+        """
+        获取股票所属的板块和行业信息
+        优先使用 yfinance，失败则尝试根据名称猜测 (针对 ETF)
+        """
+        # 1. Try yfinance
+        try:
+            stock = yf.Ticker(ticker)
+            info = stock.info
+            sector = info.get('sector')
+            industry = info.get('industry')
+            
+            if sector and sector != 'Unknown' and industry and industry != 'Unknown':
+                 return {"sector": sector, "industry": industry}
+        except Exception as e:
+            print(f"获取 {ticker} 板块信息失败 (yfinance): {e}")
+
+        # 2. Fallback: Guess from name (especially for ETFs)
+        if name:
+            return self._guess_sector_from_name(name)
+            
+        return None
+
+    def _guess_sector_from_name(self, name):
+        """Based on Chinese name, guess sector/industry"""
+        if not name:
+            return None
+            
+        name = name.upper()
+        
+        # Keywords Mapping (Applies to both ETFs and Stocks)
+        if any(x in name for x in ['医疗', '医药', '药', '生物']):
+            return {"sector": "Healthcare", "industry": "Healthcare"}
+        if any(x in name for x in ['证券', '券商', '金融', '银行', '保险']):
+            return {"sector": "Financial Services", "industry": "Financial Services"}
+        if any(x in name for x in ['芯片', '半导体', '电子', '科技', '计算机', 'AI', '人工智能', '软件', '信息']):
+            return {"sector": "Technology", "industry": "Technology"}
+        if any(x in name for x in ['消费', '酒', '家电', '食品', '饮料', '乳']):
+            return {"sector": "Consumer Defensive", "industry": "Consumer Defensive"}
+        if any(x in name for x in ['军工', '国防', '航天', '航空']):
+            return {"sector": "Industrials", "industry": "Aerospace & Defense"}
+        if any(x in name for x in ['新能源', '光伏', '电池', '车', '汽车', '锂']):
+            return {"sector": "Consumer Cyclical", "industry": "Auto Manufacturers"}
+        if any(x in name for x in ['石油', '煤炭', '能源', '石化']):
+            return {"sector": "Energy", "industry": "Oil & Gas"}
+        if any(x in name for x in ['地产', '置业']):
+            return {"sector": "Real Estate", "industry": "Real Estate"}
+        if any(x in name for x in ['黄金', '铜', '铝', '矿', '材']):
+            return {"sector": "Basic Materials", "industry": "Metals & Mining"}
+            
+        # Specific to ETFs
+        if 'ETF' in name or '基金' in name:
+            if any(x in name for x in ['红利', '高股息']):
+                return {"sector": "Strategy", "industry": "Dividend Strategy"}
+            if any(x in name for x in ['纳指', '标普', '恒生', 'H股', '指数', '300', '500', '1000']):
+                return {"sector": "Index", "industry": "Index Fund"}
+            return {"sector": "ETF", "industry": "ETF"}
+            
+        return None
+
     def get_current_price(self, ticker):
         """
         获取当前股价，如果获取失败则返回None或模拟值

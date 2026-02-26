@@ -1495,7 +1495,10 @@
                         <div class="flex items-center">
                             <div>
                                 <div class="text-sm font-medium text-slate-900 cursor-pointer hover:text-blue-600" onclick="analyzeStock('${h.ticker}'); switchTab('valuation')">${h.name}</div>
-                                <div class="text-sm text-slate-500">${h.ticker}</div>
+                                <div class="flex items-center mt-0.5 space-x-2">
+                                    <span class="text-xs text-slate-500">${h.ticker}</span>
+                                    ${h.industry_cn ? `<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-indigo-50 text-indigo-600 border border-indigo-100" title="${h.sector_cn || ''}">${h.industry_cn}</span>` : ''}
+                                </div>
                             </div>
                         </div>
                     </td>

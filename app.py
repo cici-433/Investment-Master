@@ -731,9 +731,36 @@ def analyze_portfolio():
 def get_holdings():
     holdings = master.portfolio.get_holdings()
     enriched_holdings = []
+    
     for h in holdings:
         raw_ticker = h['ticker']
         ticker = master._normalize_ticker(raw_ticker)
+        
+        # --- Sector/Industry Enrichment (Lazy Load) ---
+        sector = h.get('sector')
+        industry = h.get('industry')
+        
+        # If missing, fetch and save (only for valid tickers, not CASH)
+        if ticker != 'CASH' and (not sector or not industry or sector == 'Unknown'):
+            try:
+                # Use a short timeout or async if possible, but here we block briefly
+                # Only fetch if we haven't tried recently (optional optimization, skip for now)
+                print(f"Fetching sector info for {ticker}...")
+                info = master.valuator.get_sector_info(ticker)
+                if info:
+                    sector = info.get('sector')
+                    industry = info.get('industry')
+                    # Save to DB so we don't fetch again
+                    master.portfolio.update_holding_metadata(raw_ticker, {
+                        "sector": sector,
+                        "industry": industry
+                    })
+            except Exception as e:
+                print(f"Error enriching sector for {ticker}: {e}")
+
+        # Translate
+        sector_cn = SECTOR_MAP.get(sector, sector) if sector else "未知板块"
+        industry_cn = INDUSTRY_MAP.get(industry, industry) if industry else "未知行业"
         
         try:
             if ticker == 'CASH':
@@ -758,74 +785,72 @@ def get_holdings():
                     "gain_percent": round(gain_percent, 2),
                     "day_change_percent": 0,
                     "group_id": h.get("group_id", "default"),
-                    "note": h.get("note", "")
+                    "note": h.get("note", ""),
+                    "sector": "Cash",
+                    "industry": "Cash",
+                    "sector_cn": "现金",
+                    "industry_cn": "现金"
                 })
                 continue
 
-            # Try to get info from Sina first (faster for A-shares)
+            # 1. Try to get basic info (Price, Name) from CN API first (faster/more reliable for A-shares)
             cn_info = get_cn_stock_info(ticker)
-            day_change_percent = 0
+            
+            name = h.get('name') # Prefer saved name
+            current_price = None
+            pre_close = None
+            day_change_percent = 0.0
             
             if cn_info:
-                name = cn_info['name']
+                if not name:
+                    name = cn_info.get('name')
                 current_price = cn_info.get('current_price')
-                day_change_percent = cn_info.get('day_change_percent', 0)
-                # Fallback to yfinance if Sina price is 0 (suspended or error)
-                if current_price == 0:
-                     current_price = master.valuator.get_current_price(ticker)
-                     # Recalculate change percent if we have pre_close
-                     if current_price and cn_info.get('pre_close') and cn_info['pre_close'] > 0:
-                         day_change_percent = (current_price - cn_info['pre_close']) / cn_info['pre_close'] * 100
-            else:
-                name = raw_ticker
+                pre_close = cn_info.get('pre_close')
+                day_change_percent = cn_info.get('day_change_percent', 0.0)
+            
+            # 2. Fallback to Valuator (yfinance) if price missing
+            if current_price is None:
                 current_price = master.valuator.get_current_price(ticker)
             
-            if current_price is not None:
-                # Calculate market value and gain
-                market_value = current_price * h['shares']
-                cost_basis = h['cost'] * h['shares']
-                gain = market_value - cost_basis
-                gain_percent = (gain / cost_basis) * 100 if cost_basis > 0 else 0
+            # If still None, use cost as fallback to avoid crashes (or 0)
+            if current_price is None:
+                current_price = h.get('cost', 0)
                 
-                # Calculate Day Gain
-                day_gain = 0
-                if cn_info and cn_info.get('pre_close'):
-                     day_gain = (current_price - cn_info['pre_close']) * h['shares']
-                elif day_change_percent != 0:
-                     # Estimate if we only have percent (fallback)
-                     pre_c = current_price / (1 + day_change_percent/100)
-                     day_gain = (current_price - pre_c) * h['shares']
-
-                enriched_holdings.append({
-                    "ticker": raw_ticker, # Keep original ticker for display/id consistency
-                    "name": name,
-                    "shares": h['shares'],
-                    "cost": h['cost'],
-                    "current_price": current_price,
-                    "market_value": round(market_value, 2),
-                    "gain": round(gain, 2),
-                    "gain_percent": round(gain_percent, 2),
-                    "day_change_percent": round(day_change_percent, 2),
-                    "day_gain": round(day_gain, 2),
-                    "group_id": h.get("group_id", "default"),
-                    "note": h.get("note", "")
-                })
-            else:
-                # Price fetch failed
-                enriched_holdings.append({
-                    **h,
-                    "name": name,
-                    "current_price": "N/A",
-                    "market_value": 0,
-                    "gain": 0,
-                    "gain_percent": 0,
-                    "group_id": h.get("group_id", "default"),
-                    "note": h.get("note", "")
-                })
-
+            shares = h['shares']
+            cost_basis = h['cost']
+            
+            market_value = shares * current_price
+            gain = market_value - (shares * cost_basis)
+            gain_percent = (gain / (shares * cost_basis)) * 100 if cost_basis > 0 else 0
+            
+            # Calculate Day Gain
+            day_gain = 0.0
+            if pre_close:
+                day_gain = (current_price - pre_close) * shares
+            
+            enriched_holdings.append({
+                "ticker": raw_ticker,
+                "name": name,
+                "shares": shares,
+                "cost": cost_basis,
+                "current_price": current_price,
+                "market_value": round(market_value, 2),
+                "gain": round(gain, 2),
+                "gain_percent": round(gain_percent, 2),
+                "day_change_percent": round(day_change_percent, 2),
+                "day_gain": round(day_gain, 2),
+                "group_id": h.get("group_id", "default"),
+                "note": h.get("note", ""),
+                "sector": sector,
+                "industry": industry,
+                "sector_cn": sector_cn,
+                "industry_cn": industry_cn
+            })
+            
         except Exception as e:
-            print(f"Error enriching holding {raw_ticker}: {e}")
-            enriched_holdings.append(h) # Return basic data if fetch fails
+            print(f"Error processing holding {ticker}: {e}")
+            traceback.print_exc()
+            enriched_holdings.append(h) # Fallback to raw data
             
     return jsonify(enriched_holdings)
 
