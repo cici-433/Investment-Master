@@ -113,6 +113,107 @@ def get_cn_stock_info(ticker):
 def index():
     return render_template('index.html')
 
+@app.route('/api/analyze/verify/<ticker>')
+def verify_stock_quality(ticker):
+    try:
+        normalized = master._normalize_ticker(ticker)
+        force_refresh = request.args.get('force') == 'true'
+        
+        # 1. Check Local Cache
+        if not force_refresh:
+            cached_data = master.verification_manager.get_verification(normalized)
+            if cached_data:
+                return jsonify({"result": cached_data['content'], "cached": True, "timestamp": cached_data['timestamp']})
+        
+        # 2. Get Basic Data
+        current_price = master.valuator.get_current_price(normalized)
+        pe_data = master.valuator.calculate_pe(normalized) or {}
+        pb_data = master.valuator.calculate_pb_roe(normalized) or {}
+        
+        cn_info = get_cn_stock_info(normalized)
+        name = normalized
+        if cn_info and cn_info.get('name'):
+            name = cn_info['name']
+            
+        import yfinance as yf
+        stock = yf.Ticker(normalized)
+        try:
+            info = stock.info
+        except:
+            info = {}
+            
+        sector = info.get('sector', '未知行业')
+        industry = info.get('industry', '未知细分行业')
+        mcap = info.get('marketCap', 0)
+        
+        # Format Market Cap
+        if mcap > 100000000:
+            mcap_str = f"{mcap / 100000000:.2f} 亿"
+        else:
+            mcap_str = f"{mcap / 10000:.2f} 万"
+
+        # 3. Construct Prompt
+        prompt = f"""
+        请你扮演一位专业的价值投资专家，利用以下“4大工具”框架，对股票 {name} ({normalized}) 进行全方位的定性和定量验证，判断其是否值得投资。
+        
+        【基本数据】
+        - 价格: {current_price}
+        - 市值: {mcap_str}
+        - 行业: {sector} - {industry}
+        - PE(TTM): {pe_data.get('pe_ttm', '未知')}
+        - PB: {pb_data.get('pb_current', '未知')}
+        - ROE: {pb_data.get('roe_current', '未知')}%
+        
+        【验证框架】
+        1. **用望远镜验证公司的赛道** (Good Track)
+           - 行业空间与增长趋势（向上/稳定/向下）。
+           - 行业属性分析：
+             - 消费：品牌壁垒、规模优势、弱周期？
+             - 科技：研发投入、下游应用空间？
+             - 周期：宏观影响、供需关系、产能退出难度？
+           - 竞争格局：市场集中度(CR4)、价格战激烈程度。
+           - 产业链地位：上下游是否强势（定价权）。
+           - 市场结构：大行业小龙头 vs 小行业大龙头。
+           
+        2. **用透视镜寻找公司的护城河** (Good Company - Moat)
+           - 核心竞争力：品牌、网络效应、成本优势、转换成本、渠道优势。
+           - 技术是否转化为产品/品牌力？
+           - 护城河的稳固性与变迁风险。
+           
+        3. **用显微镜检验公司财务状况** (Financial Health)
+           - 成长能力：营收/利润增长率（>20%高成长，5-10%普通）。
+           - 盈利能力：毛利率、净利率、ROE趋势。
+           - 经营效率：存货/应收账款/固定资产周转率（效率越高越好）。
+           
+        4. **用公平秤评估股票性价比** (Good Price)
+           - 好公司不等于好股票（价格因素）。
+           - 绝对估值(DCF)与相对估值(PE/PB)视角。
+           - 结合成长性的估值判断（PEG）。
+
+        【输出要求】
+        - 请基于你已有的知识库（招股书、研报、历史数据等）进行分析。
+        - 输出格式为 Markdown。
+        - 每一个维度都要给出明确的“定性评价”（如：赛道优质、护城河深、财务健康、估值合理等）。
+        - 最后给出一个“综合验证结论”：强烈推荐 / 谨慎推荐 / 观望 / 不推荐，并说明核心理由。
+        """
+        
+        ai_response = call_volcengine_api(prompt)
+        
+        # 4. Save Result
+        metadata = {
+            "price": current_price,
+            "pe": pe_data.get('pe_ttm'),
+            "pb": pb_data.get('pb_current'),
+            "roe": pb_data.get('roe_current')
+        }
+        master.verification_manager.save_verification(normalized, ai_response, metadata)
+        
+        return jsonify({"result": ai_response})
+
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
+
 @app.route('/api/analyze/<ticker>')
 def analyze_stock(ticker):
     try:

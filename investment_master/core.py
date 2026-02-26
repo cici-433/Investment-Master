@@ -5,6 +5,7 @@ from .portfolio_manager import PortfolioManager
 from .system_manager import SystemManager
 from .journal_manager import JournalManager
 from .report_manager import ReportManager
+from .verification_manager import VerificationManager
 
 class InvestmentMaster:
     def __init__(self):
@@ -15,6 +16,7 @@ class InvestmentMaster:
         self.system_manager = SystemManager()
         self.journal_manager = JournalManager()
         self.report_manager = ReportManager()
+        self.verification_manager = VerificationManager()
 
     def _normalize_ticker(self, ticker):
         """

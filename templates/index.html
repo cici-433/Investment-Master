@@ -280,6 +280,35 @@
                 </div>
             </div>
 
+            <!-- AI Company Verification Section -->
+            <div class="mb-8 bg-white p-6 rounded-xl shadow-sm border border-indigo-100">
+                <div class="flex justify-between items-center mb-4">
+                    <div>
+                        <h2 class="text-xl font-bold text-slate-900 flex items-center">
+                            <svg class="w-6 h-6 mr-2 text-indigo-600" fill="none" stroke="currentColor"
+                                viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            AI 公司质量验证 (4大工具)
+                        </h2>
+                        <p class="text-sm text-slate-500 mt-1">基于望远镜(赛道)、透视镜(护城河)、显微镜(财务)、公平秤(性价比)的全方位验证</p>
+                    </div>
+                    <button onclick="verifyCompanyQuality()" id="btn-verify-quality"
+                        class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors shadow-sm flex items-center">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                        </svg>
+                        开始验证
+                    </button>
+                </div>
+
+                <div id="verify-result-container" class="hidden mt-4 pt-4 border-t border-slate-100">
+                    <div class="prose max-w-none markdown-content" id="verify-result-content"></div>
+                </div>
+            </div>
+
             <!-- Valuation Models Section -->
             <div class="flex justify-between items-center mb-6">
                 <h2 class="text-xl font-bold text-slate-900">综合估值模型分析</h2>
@@ -2940,6 +2969,80 @@
             contentDiv.innerHTML = marked.parse(markdown);
         } else {
             contentDiv.innerText = markdown;
+        }
+    }
+
+    async function verifyCompanyQuality(force = false) {
+        // Get ticker from the valuation view header
+        const tickerEl = document.getElementById('stock-ticker');
+        const ticker = tickerEl ? tickerEl.textContent.trim() : null;
+
+        const btn = document.getElementById('btn-verify-quality');
+        const container = document.getElementById('verify-result-container');
+        const content = document.getElementById('verify-result-content');
+
+        if (!ticker || ticker === '--') {
+            alert("请先选择一只股票进行分析");
+            return;
+        }
+
+        btn.disabled = true;
+        // Loading State
+        if (force) {
+            btn.innerHTML = '<svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> 重新验证中...';
+        } else {
+            btn.innerHTML = '<svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> 获取分析结果...';
+        }
+
+        container.classList.remove('hidden');
+        if (!content.innerHTML || force) {
+            content.innerHTML = `
+                <div class="flex flex-col items-center justify-center py-12">
+                    <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600 mb-4"></div>
+                    <p class="text-slate-500 font-medium">正在进行全方位公司质量验证...</p>
+                    <p class="text-slate-400 text-sm mt-2">AI 正在运用望远镜、透视镜、显微镜和公平秤为您分析</p>
+                    <p class="text-slate-400 text-xs mt-1">预计耗时 30-60 秒 (若有缓存则即时显示)</p>
+                </div>
+            `;
+        }
+
+        try {
+            let url = `/api/analyze/verify/${ticker}`;
+            if (force) {
+                url += '?force=true';
+            }
+            const response = await fetch(url);
+            const data = await response.json();
+
+            if (data.error) {
+                content.innerHTML = `<div class="p-4 bg-red-50 text-red-700 rounded-lg border border-red-200">验证失败: ${data.error}</div>`;
+            } else {
+                let htmlContent = '';
+                if (data.cached && data.timestamp) {
+                    const date = new Date(data.timestamp * 1000).toLocaleString();
+                    htmlContent += `<div class="mb-4 p-3 bg-blue-50 text-blue-700 text-sm rounded-lg border border-blue-200 flex items-center justify-between">
+                        <div class="flex items-center">
+                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                            <span>历史分析结果 (生成时间: ${date})</span>
+                        </div>
+                        <span class="text-xs text-blue-500">点击"重新验证"可获取最新分析</span>
+                    </div>`;
+                }
+
+                if (typeof marked !== 'undefined') {
+                    htmlContent += marked.parse(data.result);
+                } else {
+                    htmlContent += data.result;
+                }
+                content.innerHTML = htmlContent;
+            }
+        } catch (e) {
+            content.innerHTML = `<div class="p-4 bg-red-50 text-red-700 rounded-lg border border-red-200">请求异常: ${e.message}</div>`;
+        } finally {
+            btn.disabled = false;
+            // Change button to force refresh mode
+            btn.setAttribute('onclick', 'verifyCompanyQuality(true)');
+            btn.innerHTML = '<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg> 重新验证';
         }
     }
 
