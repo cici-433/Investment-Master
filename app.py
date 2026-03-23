@@ -3,6 +3,8 @@ from investment_master.core import InvestmentMaster
 from investment_master.scraper import ArticleScraper
 import traceback
 import requests
+import os
+import re
 
 app = Flask(__name__)
 master = InvestmentMaster()
@@ -35,6 +37,71 @@ INDUSTRY_MAP = {
     "Auto Parts": "汽车零部件",
     "Auto Manufacturers": "汽车制造"
 }
+
+_valuation_categories_cache = {"mtime": None, "categories": None}
+
+def _load_valuation_markdown():
+    path = os.path.join(os.path.dirname(__file__), '估值体系.md')
+    try:
+        with open(path, 'r', encoding='utf-8') as f:
+            return f.read()
+    except Exception:
+        return ""
+
+def _extract_valuation_categories(markdown_text):
+    if not markdown_text:
+        return []
+
+    lines = markdown_text.splitlines()
+    pattern = re.compile(r'^(\d+)\）\s*(.+?)\s*$')
+    candidates = []
+    for idx, line in enumerate(lines):
+        m = pattern.match(line)
+        if not m:
+            continue
+        cid = m.group(1)
+        title = m.group(2)
+        candidates.append((idx, cid, title))
+
+    matches = []
+    for idx, cid, title in candidates:
+        for j in range(idx + 1, min(idx + 8, len(lines))):
+            nxt = lines[j].strip()
+            if not nxt:
+                continue
+            if pattern.match(nxt):
+                break
+            if nxt.startswith('-') and '主估值法' in nxt:
+                matches.append((idx, cid, title))
+                break
+
+    categories = []
+    for i, (start_idx, cid, title) in enumerate(matches):
+        end_idx = matches[i + 1][0] if i + 1 < len(matches) else len(lines)
+        snippet = "\n".join(lines[start_idx:end_idx]).strip()
+        if snippet:
+            snippet += "\n"
+        categories.append({"id": cid, "title": title, "markdown": snippet})
+    return categories
+
+def _get_valuation_categories():
+    path = os.path.join(os.path.dirname(__file__), '估值体系.md')
+    try:
+        mtime = os.path.getmtime(path)
+    except Exception:
+        mtime = None
+    cached = _valuation_categories_cache
+    if cached["mtime"] == mtime and cached["categories"] is not None:
+        return cached["categories"]
+
+    md = _load_valuation_markdown()
+    categories = _extract_valuation_categories(md)
+    cached["mtime"] = mtime
+    cached["categories"] = categories
+    return categories
+
+def _get_valuation_category_title_map():
+    return {c.get("id"): c.get("title") for c in _get_valuation_categories() if c.get("id")}
 
 def get_cn_stock_info(ticker):
     """
@@ -112,6 +179,27 @@ def get_cn_stock_info(ticker):
 @app.route('/')
 def index():
     return render_template('index.html')
+
+@app.route('/api/valuation/categories', methods=['GET'])
+def get_valuation_categories():
+    cats = _get_valuation_categories()
+    return jsonify({
+        "status": "success",
+        "categories": [{"id": c.get("id"), "title": c.get("title")} for c in cats if c.get("id")]
+    })
+
+@app.route('/api/valuation/categories/<category_id>', methods=['GET'])
+def get_valuation_category_detail(category_id):
+    cid = str(category_id or '').strip()
+    for c in _get_valuation_categories():
+        if c.get("id") == cid:
+            return jsonify({
+                "status": "success",
+                "id": c.get("id"),
+                "title": c.get("title"),
+                "markdown": c.get("markdown", "")
+            })
+    return jsonify({"status": "error", "error": "Category not found"}), 404
 
 @app.route('/api/analyze/verify/<ticker>')
 def verify_stock_quality(ticker):
@@ -731,6 +819,7 @@ def analyze_portfolio():
 def get_holdings():
     holdings = master.portfolio.get_holdings()
     enriched_holdings = []
+    title_map = _get_valuation_category_title_map()
     
     for h in holdings:
         raw_ticker = h['ticker']
@@ -757,6 +846,9 @@ def get_holdings():
                     "day_change_percent": 0,
                     "group_id": h.get("group_id", "default"),
                     "note": h.get("note", ""),
+                    "strategy": h.get("strategy", ""),
+                    "valuation_category_id": h.get("valuation_category_id") or h.get("valuation_category") or "",
+                    "valuation_category_title": title_map.get(str(h.get("valuation_category_id") or h.get("valuation_category") or "")) or "",
                     "sector": "Cash",
                     "industry": "Cash",
                     "sector_cn": "现金",
@@ -779,31 +871,31 @@ def get_holdings():
                 pre_close = cn_info.get('pre_close')
                 day_change_percent = cn_info.get('day_change_percent', 0.0)
             
-            # --- Sector/Industry Enrichment (Lazy Load) ---
-            sector = h.get('sector')
-            industry = h.get('industry')
+            # --- Sector/Industry Enrichment (Disabled) ---
+            # sector = h.get('sector')
+            # industry = h.get('industry')
             
             # If missing, fetch and save (only for valid tickers)
             # Use the fetched name for better guessing if yfinance fails
-            if ticker != 'CASH' and (not sector or not industry or sector == 'Unknown'):
-                try:
-                    # Only fetch if we haven't tried recently (optional optimization, skip for now)
-                    print(f"Fetching sector info for {ticker} ({name})...")
-                    info = master.valuator.get_sector_info(ticker, name)
-                    if info:
-                        sector = info.get('sector')
-                        industry = info.get('industry')
-                        # Save to DB so we don't fetch again
-                        master.portfolio.update_holding_metadata(raw_ticker, {
-                            "sector": sector,
-                            "industry": industry
-                        })
-                except Exception as e:
-                    print(f"Error enriching sector for {ticker}: {e}")
+            # if ticker != 'CASH' and (not sector or not industry or sector == 'Unknown'):
+            #     try:
+            #         # Only fetch if we haven't tried recently (optional optimization, skip for now)
+            #         print(f"Fetching sector info for {ticker} ({name})...")
+            #         info = master.valuator.get_sector_info(ticker, name)
+            #         if info:
+            #             sector = info.get('sector')
+            #             industry = info.get('industry')
+            #             # Save to DB so we don't fetch again
+            #             master.portfolio.update_holding_metadata(raw_ticker, {
+            #                 "sector": sector,
+            #                 "industry": industry
+            #             })
+            #     except Exception as e:
+            #         print(f"Error enriching sector for {ticker}: {e}")
 
             # Translate
-            sector_cn = SECTOR_MAP.get(sector, sector) if sector else "未知板块"
-            industry_cn = INDUSTRY_MAP.get(industry, industry) if industry else "未知行业"
+            sector_cn = "" # SECTOR_MAP.get(sector, sector) if sector else "未知板块"
+            industry_cn = "" # INDUSTRY_MAP.get(industry, industry) if industry else "未知行业"
             
             # 2. Fallback to Valuator (yfinance) if price missing
             if current_price is None:
@@ -818,7 +910,10 @@ def get_holdings():
             
             market_value = shares * current_price
             gain = market_value - (shares * cost_basis)
-            gain_percent = (gain / (shares * cost_basis)) * 100 if cost_basis > 0 else 0
+            if shares > 0 and cost_basis > 0:
+                gain_percent = (gain / (shares * cost_basis)) * 100
+            else:
+                gain_percent = 0
             
             # Calculate Day Gain
             day_gain = 0.0
@@ -838,16 +933,29 @@ def get_holdings():
                 "day_gain": round(day_gain, 2),
                 "group_id": h.get("group_id", "default"),
                 "note": h.get("note", ""),
-                "sector": sector,
-                "industry": industry,
-                "sector_cn": sector_cn,
-                "industry_cn": industry_cn
+                "strategy": h.get("strategy", ""),
+                "valuation_category_id": h.get("valuation_category_id") or h.get("valuation_category") or "",
+                "valuation_category_title": title_map.get(str(h.get("valuation_category_id") or h.get("valuation_category") or "")) or "",
+                "sector": "", # sector,
+                "industry": "", # industry,
+                "sector_cn": "", # sector_cn,
+                "industry_cn": "" # industry_cn
             })
             
         except Exception as e:
-            print(f"Error processing holding {ticker}: {e}")
+            print(f"Error processing holding {raw_ticker}: {e}")
             traceback.print_exc()
-            enriched_holdings.append(h) # Fallback to raw data
+            # Fallback to safe raw data with defaults to prevent frontend crash
+            h_safe = h.copy()
+            h_safe.setdefault('market_value', 0)
+            h_safe.setdefault('gain', 0)
+            h_safe.setdefault('day_gain', 0)
+            h_safe.setdefault('current_price', 0)
+            h_safe.setdefault('gain_percent', 0)
+            h_safe.setdefault('day_change_percent', 0)
+            h_safe.setdefault('name', raw_ticker)
+            h_safe.setdefault('group_id', 'default')
+            enriched_holdings.append(h_safe)
             
     return jsonify(enriched_holdings)
 
@@ -1017,6 +1125,667 @@ def holding_decision():
     ts = master.portfolio.save_decision(holding['ticker'], indicators_text, ai_response)
     return jsonify({"status": "success", "result": ai_response, "timestamp": ts})
 
+@app.route('/api/portfolio/decision/system', methods=['POST'])
+def holding_system_decision():
+    data = request.json or {}
+    ticker = data.get('ticker')
+    action = data.get('action', 'buy')
+    if not ticker:
+        return jsonify({"status": "error", "error": "Ticker is required"}), 400
+    if action not in ('buy', 'sell'):
+        return jsonify({"status": "error", "error": "Invalid action"}), 400
+    
+    holdings = master.portfolio.get_holdings()
+    base = ticker.split('.')[0]
+    holding = None
+    for h in holdings:
+        ht = h.get('ticker')
+        if not ht:
+            continue
+        hb = ht.split('.')[0]
+        if ht == ticker or hb == base:
+            holding = h
+            break
+    
+    if not holding:
+        return jsonify({"status": "error", "error": "Holding not found"}), 404
+    
+    normalized = master._normalize_ticker(holding['ticker'])
+    name = holding.get('name')
+    current_price = None
+    market_cap_str = "未知"
+    pe_data = None
+    pb_data = None
+    
+    cn_info = get_cn_stock_info(normalized)
+    if cn_info:
+        if not name:
+            name = cn_info.get('name')
+        if cn_info.get('current_price'):
+            current_price = cn_info.get('current_price')
+    
+    try:
+        if current_price is None:
+            current_price = master.valuator.get_current_price(normalized)
+            
+        pe_data = master.valuator.calculate_pe(normalized)
+        import yfinance as yf
+        stock = yf.Ticker(normalized)
+        try:
+            info = stock.info
+        except:
+            info = {}
+            
+        mcap = info.get('marketCap')
+        if mcap:
+            if mcap > 100000000:
+                market_cap_str = f"{mcap / 100000000:.2f} 亿"
+            else:
+                market_cap_str = f"{mcap / 10000:.2f} 万"
+                
+        pb_data = master.valuator.calculate_pb_roe(normalized, info=info)
+    except Exception as e:
+        print(f"Error in system decision valuation for {normalized}: {e}")
+    
+    shares = holding.get('shares', 0)
+    cost = holding.get('cost', 0)
+    gain_text = ""
+    if current_price is not None and shares and cost:
+        market_value = current_price * shares
+        cost_basis = cost * shares
+        gain = market_value - cost_basis
+        gain_percent = (gain / cost_basis) * 100 if cost_basis > 0 else 0
+        gain_text = f"当前市值约 {round(market_value, 2)} 元，浮动盈亏 {round(gain, 2)} 元，收益率 {round(gain_percent, 2)}%。"
+    
+    valuation_lines = []
+    if pe_data:
+        tp = pe_data.get("trailing_pe")
+        fp = pe_data.get("forward_pe")
+        pb = pe_data.get("price_to_book")
+        roe = pe_data.get("return_on_equity")
+        dy = pe_data.get("dividend_yield")
+        if tp:
+            valuation_lines.append(f"TTM PE 约 {round(tp, 2)} 倍")
+        if fp:
+            valuation_lines.append(f"Forward PE 约 {round(fp, 2)} 倍")
+        if pb:
+            valuation_lines.append(f"PB 约 {round(pb, 2)} 倍")
+        if roe:
+            valuation_lines.append(f"ROE 约 {round(roe * 100, 2)}%")
+        if dy:
+            dy_val = dy
+            if dy_val < 1:
+                dy_val = dy_val * 100
+            valuation_lines.append(f"股息率约 {round(dy_val, 2)}%")
+    
+    if pb_data and "error" not in pb_data:
+        margin = pb_data.get("margin")
+        fair_value = pb_data.get("fair_value")
+        buy_range = pb_data.get("buy_range_price")
+        sell_range = pb_data.get("sell_range_price")
+        if fair_value is not None:
+            valuation_lines.append(f"PB-ROE 模型合理价值约 {fair_value} 元/股")
+        if margin is not None:
+            valuation_lines.append(f"当前安全边际约 {margin}%")
+        if isinstance(buy_range, (list, tuple)) and len(buy_range) == 2:
+            valuation_lines.append(f"PB-ROE 模型建议买入区间约 {round(buy_range[0], 2)} - {round(buy_range[1], 2)} 元")
+        if isinstance(sell_range, (list, tuple)) and len(sell_range) == 2:
+            valuation_lines.append(f"PB-ROE 模型建议卖出区间约 {round(sell_range[0], 2)} - {round(sell_range[1], 2)} 元")
+    
+    valuation_summary = "暂无完整估值数据，可更多依赖投资体系规则与观察指标。"
+    if valuation_lines:
+        valuation_summary = "\n".join(f"- {line}" for line in valuation_lines)
+    
+    checklist = master.system_manager.get_checklist(type=action) or {}
+    items = checklist.get("items") if isinstance(checklist, dict) else []
+    mode = checklist.get("mode") if isinstance(checklist, dict) else "all"
+    source = checklist.get("source") if isinstance(checklist, dict) else "checklist"
+    if mode not in ("all", "any"):
+        mode = "all"
+    
+    rule_lines = []
+    for it in items or []:
+        if isinstance(it, dict):
+            text = (it.get("text") or "").strip()
+            required = it.get("required", True) is True
+        else:
+            text = str(it).strip()
+            required = True
+        if not text:
+            continue
+        prefix = "必选" if required else "可选"
+        rule_lines.append(f"- 【{prefix}】{text}")
+    rules_text = "（暂无规则）" if not rule_lines else "\n".join(rule_lines)
+    
+    mode_text = "全部确认" if mode == "all" else "满足任一"
+    source_text = "我的投资体系" if source == "my_system" else "默认检查单"
+    action_text = "买入" if action == "buy" else "卖出"
+    
+    strategy_text = holding.get("strategy") or ""
+    note_text = holding.get("note") or ""
+    
+    prompt = f"""你是一个严格执行“投资体系”的投资助手，请先判断当前是否适合{action_text}这只股票，必须给出一个明确结论（适合 / 不适合 / 条件不足），并且说明依据。
+
+【标的基本信息】
+- 名称: {name or '未知'}
+- 代码: {normalized}
+- 当前价格: {current_price if current_price is not None else '未知'} 元
+- 总市值: {market_cap_str}
+- 持仓成本: {cost} 元
+- 持仓数量: {shares} 股
+{gain_text}
+
+【估值与财务摘要】
+{valuation_summary}
+
+【我的投资体系决策规则（本次动作：{action_text}）】
+- 来源: {source_text}
+- 通过标准: {mode_text}
+{rules_text}
+
+【该标的的操作策略（如有）】
+{strategy_text if strategy_text.strip() else "（无）"}
+
+【该标的的观察指标/备注（如有）】
+{note_text if note_text.strip() else "（无）"}
+
+请完成：
+1) 给出结论：现在是否适合{action_text}（三选一：适合/不适合/条件不足）。
+2) 对照上面的规则逐条判断：哪些条款已满足、哪些未满足、哪些需要补充数据才能判断。
+3) 给出可执行方案：如果适合，建议分批还是一次性、仓位/价格区间怎么控制；如果不适合，说明下一步需要观察的关键触发条件。
+4) 用中文、Markdown 输出，结构清晰，避免空泛口号。"""
+    
+    ai_response = call_volcengine_api(prompt)
+    if isinstance(ai_response, str) and ai_response.startswith("Error"):
+        return jsonify({"status": "error", "error": ai_response})
+    
+    return jsonify({"status": "success", "result": ai_response, "timestamp": __import__('time').time()})
+
+@app.route('/api/strategies', methods=['GET'])
+def list_strategies():
+    base_dir = os.path.join(os.path.dirname(__file__), 'strategies')
+    if not os.path.isdir(base_dir):
+        return jsonify([])
+    
+    items = []
+    for name in os.listdir(base_dir):
+        if not name.lower().endswith('.md'):
+            continue
+        if name.startswith('.'):
+            continue
+        file_path = os.path.join(base_dir, name)
+        if not os.path.isfile(file_path):
+            continue
+        slug = os.path.splitext(name)[0]
+        title = slug
+        title_set = False
+        excerpt = ''
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                lines = f.read().splitlines()
+            for line in lines[:80]:
+                s = (line or '').strip()
+                if not s:
+                    continue
+                if s.startswith('#'):
+                    if not title_set:
+                        t = s.lstrip('#').strip()
+                        if t:
+                            title = t
+                            title_set = True
+                    continue
+                if not excerpt:
+                    excerpt = s
+            updated_at = int(os.path.getmtime(file_path))
+        except Exception:
+            updated_at = None
+        items.append({
+            "slug": slug,
+            "file": name,
+            "title": title,
+            "excerpt": excerpt,
+            "updated_at": updated_at
+        })
+    
+    items.sort(key=lambda x: (x.get("title") or x.get("slug") or "").lower())
+    return jsonify(items)
+
+@app.route('/api/strategies/<slug>', methods=['GET'])
+def get_strategy(slug):
+    if not slug or not re.fullmatch(r'[A-Za-z0-9_-]+', slug):
+        return jsonify({"error": "Invalid slug"}), 400
+    base_dir = os.path.join(os.path.dirname(__file__), 'strategies')
+    file_path = os.path.join(base_dir, slug + '.md')
+    if not os.path.isfile(file_path):
+        return jsonify({"error": "Not found"}), 404
+    try:
+        with open(file_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+        updated_at = int(os.path.getmtime(file_path))
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    
+    title = slug
+    for line in content.splitlines()[:40]:
+        s = (line or '').strip()
+        if s.startswith('#'):
+            t = s.lstrip('#').strip()
+            if t:
+                title = t
+            break
+    return jsonify({"slug": slug, "title": title, "content": content, "updated_at": updated_at})
+
+@app.route('/api/strategies/ai', methods=['POST'])
+def ai_strategy_summary():
+    data = request.json or {}
+    slug = data.get('slug')
+    if not slug or not re.fullmatch(r'[A-Za-z0-9_-]+', slug):
+        return jsonify({"status": "error", "error": "Invalid slug"}), 400
+    base_dir = os.path.join(os.path.dirname(__file__), 'strategies')
+    file_path = os.path.join(base_dir, slug + '.md')
+    if not os.path.isfile(file_path):
+        return jsonify({"status": "error", "error": "Not found"}), 404
+    with open(file_path, 'r', encoding='utf-8') as f:
+        content = f.read()
+    title = slug
+    for line in content.splitlines()[:40]:
+        s = (line or '').strip()
+        if s.startswith('#'):
+            t = s.lstrip('#').strip()
+            if t:
+                title = t
+            break
+    prompt = f"""请阅读下面这一份投资策略文档，并提炼成可以直接执行的要点清单。
+
+《{title}》原文：
+{content}
+
+请输出：
+1）核心结论（一句话）
+2）适用场景与不适用边界（列表）
+3）执行步骤（最多 5 步），每一步给出所需数据与判断阈值
+4）常见坑与规避（列表）
+5）小模板：用于记录一次执行的要点（含字段名）
+
+要求使用中文、Markdown，小标题清晰、条目简洁。"""
+    ai = call_volcengine_api(prompt)
+    if isinstance(ai, str) and ai.startswith("Error"):
+        return jsonify({"status": "error", "error": ai})
+    return jsonify({"status": "success", "result": ai})
+
+def _guigui_strategy_dir():
+    return os.path.join(os.path.dirname(__file__), '龟龟投资策略_v0.15')
+
+def _read_text_file(file_path):
+    with open(file_path, 'r', encoding='utf-8') as f:
+        return f.read()
+
+def _first_md_title(content, fallback):
+    for line in (content or '').splitlines()[:60]:
+        s = (line or '').strip()
+        if s.startswith('#'):
+            t = s.lstrip('#').strip()
+            if t:
+                return t
+    return fallback
+
+@app.route('/api/guigui_strategy/docs', methods=['GET'])
+def list_guigui_docs():
+    base_dir = _guigui_strategy_dir()
+    if not os.path.isdir(base_dir):
+        return jsonify([])
+
+    items = []
+    for name in os.listdir(base_dir):
+        if not name.lower().endswith('.md'):
+            continue
+        if name.startswith('.'):
+            continue
+        file_path = os.path.join(base_dir, name)
+        if not os.path.isfile(file_path):
+            continue
+        slug = os.path.splitext(name)[0]
+        title = slug
+        updated_at = None
+        try:
+            content = _read_text_file(file_path)
+            title = _first_md_title(content, slug)
+            updated_at = int(os.path.getmtime(file_path))
+        except Exception:
+            pass
+        items.append({
+            "slug": slug,
+            "file": name,
+            "title": title,
+            "updated_at": updated_at
+        })
+
+    items.sort(key=lambda x: (x.get("file") or "").lower())
+    return jsonify(items)
+
+@app.route('/api/guigui_strategy/docs/<path:slug>', methods=['GET'])
+def get_guigui_doc(slug):
+    slug = (slug or '').strip()
+    if not slug or os.path.basename(slug) != slug or '..' in slug:
+        return jsonify({"error": "Invalid slug"}), 400
+
+    base_dir = _guigui_strategy_dir()
+    file_path = os.path.join(base_dir, slug + '.md')
+    if not os.path.isfile(file_path):
+        return jsonify({"error": "Not found"}), 404
+
+    try:
+        content = _read_text_file(file_path)
+        updated_at = int(os.path.getmtime(file_path))
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+    title = _first_md_title(content, slug)
+    return jsonify({"slug": slug, "title": title, "content": content, "updated_at": updated_at})
+
+@app.route('/api/guigui_strategy/ai', methods=['POST'])
+def ai_guigui_strategy():
+    data = request.json or {}
+    step = (data.get('step') or '').strip().lower()
+    stock = (data.get('stock') or '').strip()
+    channel = (data.get('channel') or '').strip()
+    target_year = (data.get('target_year') or '').strip()
+    data_pack_market = (data.get('data_pack_market') or '').strip()
+    data_pack_report = (data.get('data_pack_report') or '').strip()
+    pdf_name = (data.get('pdf_name') or '').strip()
+
+    step_map = {
+        "coordinator": "coordinator",
+        "phase0": "coordinator",
+        "phase1": "phase1_数据采集",
+        "phase2": "phase2_PDF解析",
+        "phase3": "phase3_分析与报告",
+    }
+    if step not in step_map:
+        return jsonify({"status": "error", "error": "Invalid step"}), 400
+
+    base_dir = _guigui_strategy_dir()
+    file_path = os.path.join(base_dir, step_map[step] + '.md')
+    if not os.path.isfile(file_path):
+        return jsonify({"status": "error", "error": "Doc not found"}), 404
+
+    doc = _read_text_file(file_path)
+    if len(doc) > 12000:
+        doc = doc[:12000] + "\n\n...(内容过长已截断)"
+
+    ctx = f"""用户输入：
+- 标的：{stock or "（未填）"}
+- 持股渠道：{channel or "（未填）"}
+- 年报PDF：{pdf_name or "（未上传）"}
+- 目标财年：{target_year or "（未填）"}"""
+
+    if step in ("phase3",):
+        if not data_pack_market:
+            return jsonify({"status": "error", "error": "data_pack_market is required"}), 400
+        packs = f"""data_pack_market.md：
+{data_pack_market[:18000]}
+
+data_pack_report.md（可选）：
+{data_pack_report[:18000]}"""
+        prompt = f"""你将协助我执行《龟龟投资策略 v0.15》的 Phase 3（分析与报告）。
+
+策略指令（节选）：
+{doc}
+
+{ctx}
+
+输入数据包（仅允许使用这些数据，不允许使用外部数据源、不允许猜测缺失项）：
+{packs}
+
+请输出一个可直接保存为 Markdown 的分析报告（简化版但要可执行），必须包含：
+1）因子1A 五分钟快筛：按策略表格输出，并给出是否否决
+2）若未否决：因子2 粗算的关键计算（展示公式+代入），给出否决门判断
+3）若未否决：因子3/4 在数据不足时明确列出“缺什么数据才能算”，并给出下一步数据采集/年报提取清单
+4）结论：三选一（通过/否决/数据不足），并给出下一步行动
+要求中文、Markdown，小标题清晰，所有引用写明来源字段名（如 data_pack_market / data_pack_report）。"""
+    else:
+        prompt = f"""你将协助我把《龟龟投资策略 v0.15》的文档，转成“网页操作界面可用”的执行清单与填写模板。
+
+策略文档：
+{doc}
+
+{ctx}
+
+请输出 Markdown，必须包含：
+1）本步骤的输入字段（字段名、示例、是否必填）
+2）本步骤的操作按钮（按钮文案、点击后做什么、输出到哪里）
+3）本步骤的输出物（文件名/内容结构/关键字段）
+4）常见错误与界面提示文案（用户容易填错的点）
+请保持内容简洁、可直接映射成界面组件。"""
+
+    ai = call_volcengine_api(prompt, use_search=False)
+    if isinstance(ai, str) and ai.startswith("Error"):
+        return jsonify({"status": "error", "error": ai})
+    return jsonify({"status": "success", "result": ai})
+
+import yfinance as yf
+import pandas as pd
+
+def _normalize_symbol(ticker):
+    t = master._normalize_ticker(ticker)
+    base = t.split('.')[0]
+    return t, base
+
+def _df_to_year_rows(df, fields, unit_note):
+    rows = []
+    years = []
+    try:
+        if isinstance(df, pd.DataFrame):
+            cols = list(df.columns)
+            for c in cols[:5]:
+                y = str(c.year) if hasattr(c, 'year') else str(c)
+                years.append(y)
+            years = years[::-1]
+            for y in years:
+                row = [y]
+                for f in fields:
+                    val = None
+                    try:
+                        c = df.columns[df.columns.astype(str) == y][0]
+                        v = df.loc[f, c]
+                        if pd.isna(v):
+                            val = '⚠️缺失'
+                        else:
+                            val = f"{float(v):,.2f}"
+                    except:
+                        val = '⚠️缺失'
+                    row.append(val)
+                rows.append(row)
+    except:
+        pass
+    return years, rows
+
+def _series_to_table(s, max_rows=50):
+    out = []
+    try:
+        if hasattr(s, 'items'):
+            items = list(s.items())
+            items = items[-max_rows:]
+            for dt, val in items[::-1]:
+                out.append((str(dt.date()) if hasattr(dt, 'date') else str(dt), f"{float(val):,.4f}"))
+    except:
+        pass
+    return out
+
+def _weekly_history_summary(hist):
+    info = {"start": "", "end": "", "count": 0, "min": None, "min_date": "", "max": None, "max_date": "", "years": {}}
+    try:
+        if isinstance(hist, pd.DataFrame) and len(hist) > 0:
+            info["start"] = str(hist.index[0].date())
+            info["end"] = str(hist.index[-1].date())
+            info["count"] = len(hist)
+            closes = hist['Close']
+            idx_min = closes.idxmin()
+            idx_max = closes.idxmax()
+            info["min"] = float(closes.min())
+            info["min_date"] = str(idx_min.date())
+            info["max"] = float(closes.max())
+            info["max_date"] = str(idx_max.date())
+            by_year = {}
+            for ts, row in hist.iterrows():
+                y = ts.year
+                c = float(row['Close'])
+                by_year.setdefault(y, {"low": c, "high": c, "last": c})
+                by_year[y]["low"] = min(by_year[y]["low"], c)
+                by_year[y]["high"] = max(by_year[y]["high"], c)
+                by_year[y]["last"] = c
+            info["years"] = by_year
+    except:
+        pass
+    return info
+
+def _build_data_pack_market(ticker, channel, target_year):
+    t, symbol = _normalize_symbol(ticker)
+    stock = yf.Ticker(t)
+    info = {}
+    try:
+        info = stock.info
+    except:
+        info = {}
+    name_info = get_cn_stock_info(t) or {}
+    name = name_info.get("name") or info.get("shortName") or t
+    sector = info.get("sector") or "Unknown"
+    industry = info.get("industry") or "Unknown"
+    unit_note = "所有金额单位为报表币种的百万元"
+    fin = None
+    bs = None
+    cf = None
+    try:
+        fin = stock.financials
+    except:
+        pass
+    try:
+        bs = stock.balance_sheet
+    except:
+        pass
+    try:
+        cf = stock.cashflow
+    except:
+        pass
+    inc_fields = ["Total Revenue","Cost Of Revenue","Gross Profit","Research Development","Selling General Administrative","Operating Income","Other Income Expense","Income Before Tax","Income Tax Expense","Net Income","Net Income Applicable To Common Shares","Minority Interest","Depreciation"]
+    bs_fields = ["Cash And Cash Equivalents","Short Term Investments","Net Receivables","Inventory","Other Current Assets","Total Current Assets","Long Term Investments","Property Plant Equipment","Goodwill","Intangible Assets","Total Assets","Short Long Term Debt","Long Term Debt","Accounts Payable","Deferred Revenue","Total Current Liabilities","Total Liab","Total Stockholder Equity","Minority Interest"]
+    cf_fields = ["Total Cash From Operating Activities","Capital Expenditures","Total Cashflows From Investing Activities","Total Cash From Financing Activities","Dividends Paid","Repurchase Of Stock","Depreciation","Change In Receivables","Change In Payables","Change In Inventory"]
+    inc_years, inc_rows = _df_to_year_rows(fin, inc_fields, unit_note) if fin is not None else ([],[])
+    bs_years, bs_rows = _df_to_year_rows(bs, bs_fields, unit_note) if bs is not None else ([],[])
+    cf_years, cf_rows = _df_to_year_rows(cf, cf_fields, unit_note) if cf is not None else ([],[])
+    div_table = _series_to_table(stock.dividends if hasattr(stock, 'dividends') else [], 80)
+    hist = stock.history(period='10y', interval='1wk')
+    hist_info = _weekly_history_summary(hist)
+    price = info.get('currentPrice') or info.get('previousClose') or ""
+    mcap = info.get('marketCap') or ""
+    dy = info.get('dividendYield') or info.get('trailingAnnualDividendYield') or ""
+    lines = []
+    lines.append(f"# 数据包：{name}（{t}）")
+    lines.append("")
+    lines.append("## 1. 基础信息")
+    lines.append(f"- 代码：{t}")
+    lines.append(f"- 名称：{name}")
+    lines.append(f"- 板块/行业：{sector} / {industry}")
+    lines.append(f"- 持股渠道：{channel or '（未指定）'}")
+    lines.append(f"- 分红率TTM：{dy if dy else '未知'}")
+    lines.append("")
+    lines.append("## 2. 市场数据")
+    lines.append(f"- 当前股价：{price}")
+    lines.append(f"- 总市值：{mcap}")
+    lines.append("")
+    lines.append("## 3. 五年损益表（单位：百万元）")
+    if inc_rows:
+        header = "| 年份 | " + " | ".join([f for f in inc_fields]) + " |"
+        sep = "|:----|" + "|".join([":----:" for _ in inc_fields]) + "|"
+        lines.append(header)
+        lines.append(sep)
+        for r in inc_rows:
+            lines.append("| " + " | ".join(r) + " |")
+    else:
+        lines.append("⚠️ 获取失败")
+    lines.append("")
+    lines.append("## 4. 五年资产负债表（单位：百万元）")
+    if bs_rows:
+        header = "| 年份 | " + " | ".join([f for f in bs_fields]) + " |"
+        sep = "|:----|" + "|".join([":----:" for _ in bs_fields]) + "|"
+        lines.append(header)
+        lines.append(sep)
+        for r in bs_rows:
+            lines.append("| " + " | ".join(r) + " |")
+    else:
+        lines.append("⚠️ 获取失败")
+    lines.append("")
+    lines.append("## 5. 五年现金流量表（单位：百万元）")
+    if cf_rows:
+        header = "| 年份 | " + " | ".join([f for f in cf_fields]) + " |"
+        sep = "|:----|" + "|".join([":----:" for _ in cf_fields]) + "|"
+        lines.append(header)
+        lines.append(sep)
+        for r in cf_rows:
+            lines.append("| " + " | ".join(r) + " |")
+    else:
+        lines.append("⚠️ 获取失败")
+    lines.append("")
+    lines.append("## 6. 股息历史")
+    if div_table:
+        lines.append("| 除净日 | 每股股息 |")
+        lines.append("|:-----|------:|")
+        for d, v in div_table:
+            lines.append(f"| {d} | {v} |")
+    else:
+        lines.append("（无记录或获取失败）")
+    lines.append("")
+    lines.append("## 7. 管理层与治理（占位）")
+    lines.append("⚠️ 待补充：控股股东、审计师、违规记录等")
+    lines.append("")
+    lines.append("## 8. 行业与竞争（占位）")
+    lines.append("⚠️ 待补充：竞争对手、监管动态、周期位置")
+    lines.append("")
+    lines.append("## 9. 子公司数据（占位）")
+    lines.append("⚠️ 若为控股公司，待补充子公司列表及数据")
+    lines.append("")
+    lines.append("## 10. MD&A 摘要（占位）")
+    lines.append("⚠️ 待补充：管理层讨论与分析摘要")
+    lines.append("")
+    lines.append("## 11. 10年历史价格摘要")
+    lines.append(f"- 数据覆盖区间：{hist_info['start']} — {hist_info['end']}")
+    lines.append(f"- 数据点数量：{hist_info['count']}")
+    lines.append(f"- 10年最低价：{hist_info['min']}（{hist_info['min_date']}）")
+    lines.append(f"- 10年最高价：{hist_info['max']}（{hist_info['max_date']}）")
+    lines.append("")
+    lines.append("年度摘要：")
+    lines.append("| 年份 | 年度最低 | 年度最高 | 年末收盘 |")
+    lines.append("|:----|------:|------:|------:|")
+    for y in sorted(hist_info["years"].keys()):
+        d = hist_info["years"][y]
+        lines.append(f"| {y} | {d['low']:.4f} | {d['high']:.4f} | {d['last']:.4f} |")
+    lines.append("")
+    lines.append("## 12. 数据来源汇总")
+    lines.append("| # | 数据项 | 来源 | URL/工具 | 获取日期 |")
+    lines.append("|---|:-------|:-----|:---------|:--------:|")
+    lines.append("| 1 | 市场与财务数据 | yfinance | Ticker.info/financials/balance_sheet/cashflow | N/A |")
+    lines.append("")
+    lines.append(f"（说明）{unit_note}")
+    return "\n".join(lines), symbol
+
+@app.route('/api/guigui_strategy/phase1/run', methods=['POST'])
+def run_guigui_phase1():
+    data = request.json or {}
+    stock = (data.get('stock') or '').strip()
+    channel = (data.get('channel') or '').strip()
+    target_year = (data.get('target_year') or '').strip()
+    if not stock:
+        return jsonify({"status": "error", "error": "缺少标的"}), 400
+    try:
+        content, symbol = _build_data_pack_market(stock, channel, target_year)
+        out_dir = os.path.join(os.path.dirname(__file__), 'workspace', symbol)
+        os.makedirs(out_dir, exist_ok=True)
+        out_path = os.path.join(out_dir, 'data_pack_market.md')
+        with open(out_path, 'w', encoding='utf-8') as f:
+            f.write(content)
+        return jsonify({"status": "success", "result": content, "file_path": out_path})
+    except Exception as e:
+        return jsonify({"status": "error", "error": str(e)}), 500
 @app.route('/api/portfolio/groups', methods=['GET'])
 def get_groups():
     return jsonify(master.portfolio.get_groups())
@@ -1076,8 +1845,9 @@ def add_holding():
     group_id = data.get('group_id', 'default')
     note = data.get('note')
     name = data.get('name')
+    valuation_category_id = data.get('valuation_category_id') or data.get('valuation_category')
     
-    if master.portfolio.add_holding(ticker, shares, cost, group_id, note, name=name):
+    if master.portfolio.add_holding(ticker, shares, cost, group_id, note, name=name, valuation_category_id=valuation_category_id):
         return jsonify({"status": "success"})
     return jsonify({"error": "Failed to add holding"}), 500
 
@@ -1092,8 +1862,10 @@ def update_holding(ticker):
     group_id = data.get('group_id', 'default')
     note = data.get('note')
     name = data.get('name')
+    strategy = data.get('strategy')
+    valuation_category_id = data.get('valuation_category_id') or data.get('valuation_category')
     
-    if master.portfolio.update_holding(normalized_ticker, shares, cost, group_id, note, name=name):
+    if master.portfolio.update_holding(normalized_ticker, shares, cost, group_id, note, name=name, strategy=strategy, valuation_category_id=valuation_category_id):
         return jsonify({"status": "success"})
     return jsonify({"error": "Failed to update holding"}), 500
 

@@ -126,7 +126,7 @@ class PortfolioManager:
         self.save_data(data)
         return True
 
-    def add_holding(self, ticker, shares, cost, group_id='default', note=None, name=None):
+    def add_holding(self, ticker, shares, cost, group_id='default', note=None, name=None, strategy=None, valuation_category_id=None):
         data = self.load_data()
         # Check if already exists in this group
         for h in data["holdings"]:
@@ -141,6 +141,10 @@ class PortfolioManager:
                     h["name"] = name # Update name if provided
                 if note is not None:
                     h["note"] = note
+                if strategy is not None:
+                    h["strategy"] = strategy
+                if valuation_category_id is not None:
+                    h["valuation_category_id"] = str(valuation_category_id) if valuation_category_id != "" else ""
                 self.save_data(data)
                 return True
         
@@ -150,12 +154,14 @@ class PortfolioManager:
             "cost": cost,
             "group_id": group_id,
             "name": name, # Save name
-            "note": note or ""
+            "note": note or "",
+            "strategy": strategy or "",
+            "valuation_category_id": str(valuation_category_id) if valuation_category_id else ""
         })
         self.save_data(data)
         return True
 
-    def update_holding(self, ticker, shares, cost, group_id='default', note=None, name=None):
+    def update_holding(self, ticker, shares, cost, group_id='default', note=None, name=None, strategy=None, valuation_category_id=None):
         data = self.load_data()
         # Find exact match to update
         for h in data["holdings"]:
@@ -166,6 +172,10 @@ class PortfolioManager:
                     h["name"] = name
                 if note is not None:
                     h["note"] = note
+                if strategy is not None:
+                    h["strategy"] = strategy
+                if valuation_category_id is not None:
+                    h["valuation_category_id"] = str(valuation_category_id) if valuation_category_id != "" else ""
                 self.save_data(data)
                 return True
         
@@ -181,6 +191,10 @@ class PortfolioManager:
                 h["name"] = name
             if note is not None:
                 h["note"] = note
+            if strategy is not None:
+                h["strategy"] = strategy
+            if valuation_category_id is not None:
+                h["valuation_category_id"] = str(valuation_category_id) if valuation_category_id != "" else ""
             self.save_data(data)
             return True
 

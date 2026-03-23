@@ -1,5 +1,6 @@
 import json
 import os
+import re
 import uuid
 import time
 from .storage import get_storage
@@ -56,20 +57,125 @@ class SystemManager:
             return {"articles": [], "checklist": { "buy": [], "sell": [] }}
         return data
 
+    def _find_my_system_article(self, data):
+        articles = data.get("articles", []) if isinstance(data, dict) else []
+        for a in articles:
+            if (a.get("title") or "").strip() == "我的投资体系":
+                return a
+        return None
+
+    def _parse_system_decision_rules(self, markdown):
+        if not markdown or not isinstance(markdown, str):
+            return None
+
+        sections = {
+            "buy": {"items": [], "mode": None},
+            "sell": {"items": [], "mode": None},
+        }
+
+        current = None
+        current_level = None
+        counters = {"buy": 0, "sell": 0}
+
+        def set_mode(section, heading_text):
+            if not heading_text:
+                return
+            t = heading_text.upper()
+            if "ANY" in t or "任一" in heading_text or "任意" in heading_text:
+                sections[section]["mode"] = "any"
+                return
+            if "ALL" in t or "全部" in heading_text:
+                sections[section]["mode"] = "all"
+
+        for raw in markdown.splitlines():
+            line = raw.rstrip("\n")
+            stripped = line.strip()
+            if not stripped:
+                continue
+
+            m_head = re.match(r"^(#{1,6})\s+(.+)$", stripped)
+            if m_head:
+                level = len(m_head.group(1))
+                title = m_head.group(2).strip()
+                compact = title.replace(" ", "")
+                if "买入" in compact:
+                    current = "buy"
+                    current_level = level
+                    set_mode("buy", title)
+                    continue
+                if "卖出" in compact or "减仓" in compact:
+                    current = "sell"
+                    current_level = level
+                    set_mode("sell", title)
+                    continue
+                if current and current_level is not None and level <= current_level:
+                    current = None
+                    current_level = None
+                continue
+
+            if not current:
+                continue
+
+            m_item = re.match(r"^\s*(?:[-*+]|(\d+)[.)])\s+(.*)$", line)
+            if not m_item:
+                continue
+
+            text = (m_item.group(2) or "").strip()
+            if not text:
+                continue
+
+            required = True
+            for prefix in ("[可选]", "（可选）", "(可选)", "可选：", "可选:"):
+                if text.startswith(prefix):
+                    required = False
+                    text = text[len(prefix):].strip()
+                    break
+
+            if not text:
+                continue
+
+            counters[current] += 1
+            sections[current]["items"].append({
+                "id": str(counters[current]),
+                "text": text,
+                "required": required
+            })
+
+        if sections["buy"]["items"] or sections["sell"]["items"]:
+            if not sections["buy"]["mode"]:
+                sections["buy"]["mode"] = "all"
+            if not sections["sell"]["mode"]:
+                sections["sell"]["mode"] = "all"
+            return sections
+
+        return None
+
     def get_checklist(self, type='buy'):
         data = self.load_data()
+        article = self._find_my_system_article(data)
+        if article:
+            rules = self._parse_system_decision_rules(article.get("content") or "")
+            if rules and type in rules:
+                updated_at = article.get("updated_at") or article.get("created_at")
+                return {
+                    "items": rules[type]["items"],
+                    "mode": rules[type].get("mode") or "all",
+                    "source": "my_system",
+                    "updated_at": updated_at
+                }
+
         checklist = data.get("checklist")
         
         # Handle case where checklist might be a list (legacy data not yet migrated by init)
         if isinstance(checklist, list):
             if type == 'buy':
-                return checklist
-            return []
+                return {"items": checklist, "mode": "all", "source": "checklist"}
+            return {"items": [], "mode": "all", "source": "checklist"}
             
         if not checklist:
-            return []
+            return {"items": [], "mode": "all", "source": "checklist"}
             
-        return checklist.get(type, [])
+        return {"items": checklist.get(type, []), "mode": "all", "source": "checklist"}
 
     def update_checklist(self, items, type='buy'):
         data = self.load_data()

@@ -7,8 +7,8 @@
     <title>Investment Master - 智能投资分析平台</title>
     <script src="https://cdn.tailwindcss.com"></script>
 
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/4.2.12/marked.min.js"></script>
     <style>
         .glass-panel {
             background: rgba(255, 255, 255, 0.95);
@@ -128,6 +128,8 @@
             document.getElementById('view-portfolio').classList.add('hidden');
             const viewSystem = document.getElementById('view-system');
             if (viewSystem) viewSystem.classList.add('hidden');
+            const viewStrategies = document.getElementById('view-strategies');
+            if (viewStrategies) viewStrategies.classList.add('hidden');
             const viewJournal = document.getElementById('view-journal');
             if (viewJournal) viewJournal.classList.add('hidden');
 
@@ -135,7 +137,7 @@
             document.getElementById('view-' + tabId).classList.remove('hidden');
 
             // Reset nav styles
-            const navs = ['valuation', 'portfolio', 'system', 'journal'];
+            const navs = ['valuation', 'portfolio', 'system', 'strategies', 'journal'];
             navs.forEach(nav => {
                 const el = document.getElementById('nav-' + nav);
                 if (nav === tabId) {
@@ -148,6 +150,13 @@
             // Trigger specific view logic
             if (tabId === 'system') {
                 loadArticles();
+            } else if (tabId === 'strategies') {
+                const subtab = window.__strategiesSubtab || 'library';
+                if (typeof switchStrategiesSubtab === 'function') {
+                    switchStrategiesSubtab(subtab);
+                } else {
+                    loadStrategies();
+                }
             } else if (tabId === 'portfolio') {
                 if (currentPortfolioTab === 'holdings') loadHoldings();
                 else loadWatchlist();
@@ -215,6 +224,8 @@
                             class="text-slate-500 hover:text-slate-900 px-3 py-2 rounded-md text-sm font-medium transition-colors hover:bg-slate-50 cursor-pointer">我的持仓</a>
                         <a id="nav-system" onclick="switchTab('system')"
                             class="text-slate-500 hover:text-slate-900 px-3 py-2 rounded-md text-sm font-medium transition-colors hover:bg-slate-50 cursor-pointer">投资体系</a>
+                        <a id="nav-strategies" onclick="switchTab('strategies')"
+                            class="text-slate-500 hover:text-slate-900 px-3 py-2 rounded-md text-sm font-medium transition-colors hover:bg-slate-50 cursor-pointer">投资策略</a>
                         <a id="nav-journal" onclick="switchTab('journal')"
                             class="text-slate-500 hover:text-slate-900 px-3 py-2 rounded-md text-sm font-medium transition-colors hover:bg-slate-50 cursor-pointer">复盘日志</a>
                     </div>
@@ -798,17 +809,213 @@
                     <h1 class="text-3xl font-bold text-slate-900">投资体系</h1>
                     <p class="text-sm text-slate-500 mt-1">记录与学习投资大师的智慧</p>
                 </div>
-                <button onclick="openArticleModal()"
-                    class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors shadow-sm">
-                    + 新增文章
-                </button>
+                <div class="flex items-center space-x-3">
+                    <button onclick="openMySystemEditor()"
+                        class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors shadow-sm">
+                        编辑我的投资体系
+                    </button>
+                    <button onclick="openArticleModal()"
+                        class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors shadow-sm">
+                        + 新增文章
+                    </button>
+                </div>
             </div>
 
-            <!-- Articles Grid -->
-            <div id="articles-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <!-- Articles will be loaded here -->
-                <div class="col-span-full text-center py-12 text-slate-400">
-                    加载中...
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="lg:col-span-1">
+                    <div class="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
+                        <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+                            <div>
+                                <div class="text-sm text-slate-500">我的投资体系</div>
+                                <div class="text-xl font-bold text-slate-900 mt-0.5">一眼就能看到的交易纪律</div>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <button id="btn-my-system-read" onclick="openMySystemReader()"
+                                    class="text-slate-500 hover:text-blue-600 text-sm font-medium">阅读</button>
+                                <button onclick="openMySystemEditor()"
+                                    class="text-slate-500 hover:text-indigo-600 text-sm font-medium">编辑</button>
+                            </div>
+                        </div>
+                        <div id="my-system-card" class="p-6">
+                            <div class="text-center py-12 text-slate-400">加载中...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="lg:col-span-1">
+                    <!-- Articles Grid -->
+                    <div id="articles-grid" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <!-- Articles will be loaded here -->
+                        <div class="col-span-full text-center py-12 text-slate-400">
+                            加载中...
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="view-strategies" class="hidden">
+            <div class="mb-6 flex items-end justify-between">
+                <div>
+                    <h1 class="text-3xl font-bold text-slate-900">投资策略</h1>
+                    <p class="text-sm text-slate-500 mt-1">常用模型、框架与执行要点</p>
+                </div>
+                <div class="flex items-center space-x-3">
+                    <div class="inline-flex p-1 bg-white border border-slate-200 rounded-lg">
+                        <button id="strategies-subtab-library" onclick="switchStrategiesSubtab('library')"
+                            class="px-3 py-2 rounded-md text-sm font-medium transition-colors bg-blue-50 text-blue-700">
+                            策略库
+                        </button>
+                        <button id="strategies-subtab-guigui" onclick="switchStrategiesSubtab('guigui')"
+                            class="px-3 py-2 rounded-md text-sm font-medium transition-colors text-slate-600 hover:text-slate-900 hover:bg-slate-50">
+                            龟龟投资策略
+                        </button>
+                    </div>
+                    <div id="strategies-search-wrap" class="w-72">
+                        <div class="relative">
+                            <input id="strategies-search" type="text" placeholder="搜索策略..."
+                                class="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                oninput="filterStrategies()">
+                            <div class="absolute left-3 top-2.5 text-slate-400">
+                                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                                </svg>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="strategies-library-view">
+                <div id="strategies-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div class="col-span-full text-center py-12 text-slate-400">加载中...</div>
+                </div>
+            </div>
+
+            <div id="strategies-guigui-view" class="hidden">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div class="lg:col-span-1">
+                        <div class="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
+                            <div class="px-5 py-4 border-b border-slate-100">
+                                <div class="text-sm text-slate-500">龟龟投资策略 v0.15</div>
+                                <div class="text-xl font-bold text-slate-900 mt-0.5">多阶段：采集 → 年报 → 报告</div>
+                            </div>
+                            <div class="p-5 space-y-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-700 mb-1">标的（代码或名称）</label>
+                                    <input id="guigui-stock" type="text" placeholder="如：600519 / 0001.HK / 长和"
+                                        class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-700 mb-1">持股渠道</label>
+                                    <select id="guigui-channel"
+                                        class="w-full border border-slate-300 rounded-lg px-3 py-2 bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                                        <option value="">自动（按文档默认）</option>
+                                        <option value="港股通">港股通</option>
+                                        <option value="直接持有">直接持有</option>
+                                        <option value="长期持有">A股长期持有</option>
+                                        <option value="W-8BEN">美股券商（W-8BEN）</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-700 mb-1">目标财年（可选）</label>
+                                    <input id="guigui-year" type="text" placeholder="如：2024"
+                                        class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-700 mb-1">年报 PDF（可选）</label>
+                                    <input id="guigui-pdf" type="file" accept="application/pdf"
+                                        class="w-full text-sm text-slate-600 file:mr-4 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200">
+                                    <div class="text-xs text-slate-500 mt-2">
+                                        已选择：<span id="guigui-pdf-name">未上传</span>
+                                    </div>
+                                </div>
+                                <button id="guigui-open-coordinator" onclick="openGuiguiDoc('coordinator')"
+                                    class="w-full bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 rounded-lg font-medium transition-colors">
+                                    查看协调器（全流程）
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="lg:col-span-2 space-y-6">
+                        <div class="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
+                            <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+                                <div>
+                                    <div class="text-sm text-slate-500">Phase 1</div>
+                                    <div class="text-lg font-bold text-slate-900 mt-0.5">数据采集</div>
+                                </div>
+                                <div class="flex items-center space-x-2">
+                                    <button onclick="openGuiguiDoc('phase1_数据采集')"
+                                        class="text-sm text-slate-500 hover:text-blue-600 font-medium">查看原文</button>
+                                    <button onclick="runGuiguiPhase1()"
+                                        class="text-sm bg-indigo-600 text-white px-3 py-2 rounded-lg hover:bg-indigo-700 transition-colors font-medium">
+                                        执行数据采集
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="p-5">
+                                <div id="guigui-phase1-result"
+                                    class="markdown-content text-slate-800 text-sm leading-6"></div>
+                            </div>
+                        </div>
+
+                        <div class="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
+                            <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+                                <div>
+                                    <div class="text-sm text-slate-500">Phase 2</div>
+                                    <div class="text-lg font-bold text-slate-900 mt-0.5">PDF 年报解析</div>
+                                </div>
+                                <div class="flex items-center space-x-2">
+                                    <button onclick="openGuiguiDoc('phase2_PDF解析')"
+                                        class="text-sm text-slate-500 hover:text-blue-600 font-medium">查看原文</button>
+                                    <button onclick="runGuiguiAi('phase2')"
+                                        class="text-sm bg-indigo-600 text-white px-3 py-2 rounded-lg hover:bg-indigo-700 transition-colors font-medium">
+                                        生成界面清单
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="p-5">
+                                <div id="guigui-phase2-result"
+                                    class="markdown-content text-slate-800 text-sm leading-6"></div>
+                            </div>
+                        </div>
+
+                        <div class="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
+                            <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+                                <div>
+                                    <div class="text-sm text-slate-500">Phase 3</div>
+                                    <div class="text-lg font-bold text-slate-900 mt-0.5">分析与报告（基于数据包）</div>
+                                </div>
+                                <div class="flex items-center space-x-2">
+                                    <button onclick="openGuiguiDoc('phase3_分析与报告')"
+                                        class="text-sm text-slate-500 hover:text-blue-600 font-medium">查看原文</button>
+                                    <button onclick="runGuiguiAi('phase3')"
+                                        class="text-sm bg-indigo-600 text-white px-3 py-2 rounded-lg hover:bg-indigo-700 transition-colors font-medium">
+                                        生成分析报告
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="p-5 space-y-4">
+                                <div>
+                                    <label
+                                        class="block text-sm font-medium text-slate-700 mb-1">data_pack_market.md（必填）</label>
+                                    <textarea id="guigui-pack-market" rows="8" placeholder="粘贴 Phase 1 输出的数据包内容"
+                                        class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none font-mono text-xs"></textarea>
+                                </div>
+                                <div>
+                                    <label
+                                        class="block text-sm font-medium text-slate-700 mb-1">data_pack_report.md（可选）</label>
+                                    <textarea id="guigui-pack-report" rows="6" placeholder="粘贴 Phase 2 输出的数据包内容（没有可留空）"
+                                        class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none font-mono text-xs"></textarea>
+                                </div>
+                                <div id="guigui-phase3-result"
+                                    class="hidden markdown-content text-slate-800 text-sm leading-6 border border-indigo-100 bg-indigo-50/40 rounded-lg p-4">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -821,7 +1028,7 @@
                 <input type="hidden" id="article-id">
 
                 <!-- Import URL Section -->
-                <div class="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-100">
+                <div id="article-import-section" class="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-100">
                     <label class="block text-sm font-medium text-blue-700 mb-2">从网址导入 (自动抓取)</label>
                     <div class="flex space-x-2">
                         <input type="text" id="import-url" placeholder="粘贴文章链接 (如雪球、微信公众号)"
@@ -835,17 +1042,17 @@
                 </div>
 
                 <div class="space-y-4">
-                    <div>
+                    <div id="article-title-field">
                         <label class="block text-sm font-medium text-slate-700 mb-1">标题</label>
                         <input type="text" id="article-title"
                             class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
                     </div>
-                    <div>
+                    <div id="article-author-field">
                         <label class="block text-sm font-medium text-slate-700 mb-1">作者/来源</label>
                         <input type="text" id="article-author"
                             class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
                     </div>
-                    <div>
+                    <div id="article-tags-field">
                         <label class="block text-sm font-medium text-slate-700 mb-1">标签 (逗号分隔)</label>
                         <input type="text" id="article-tags" placeholder="如: 价值投资, 巴菲特, 银行股"
                             class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
@@ -880,14 +1087,22 @@
 
                 <div class="overflow-y-auto p-8 flex-1">
                     <h2 id="reader-title" class="text-2xl font-bold text-slate-900 mb-2"></h2>
-                    <div class="flex items-center space-x-4 text-sm text-slate-500 mb-6">
-                        <span id="reader-author" class="font-medium text-slate-700"></span>
-                        <span id="reader-date"></span>
-                        <div id="reader-tags" class="flex space-x-2"></div>
+                    <div class="mb-4 flex items-center justify-between">
+                        <div class="flex items-center space-x-4 text-sm text-slate-500">
+                            <span id="reader-author" class="font-medium text-slate-700"></span>
+                            <span id="reader-date"></span>
+                            <div id="reader-tags" class="flex space-x-2"></div>
+                        </div>
+                        <button id="reader-ai-btn" onclick="runStrategyAi()"
+                            class="hidden text-xs bg-indigo-600 text-white px-3 py-1.5 rounded-lg hover:bg-indigo-700 transition-colors">
+                            AI 提炼执行要点
+                        </button>
+                    </div>
+                    <div id="reader-ai-result"
+                        class="hidden mb-6 markdown-content text-slate-800 leading-relaxed border border-indigo-100 bg-indigo-50/40 rounded-lg p-4">
                     </div>
 
-                    <div id="reader-content"
-                        class="prose max-w-none text-slate-800 whitespace-pre-wrap leading-relaxed">
+                    <div id="reader-content" class="markdown-content max-w-none text-slate-800 leading-relaxed">
                     </div>
                 </div>
             </div>
@@ -916,56 +1131,90 @@
 
     <!-- Add Stock Modal -->
     <div id="add-stock-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center">
-        <div class="bg-white rounded-xl shadow-lg p-6 w-96">
-            <h3 id="modal-title" class="text-xl font-bold mb-4">添加股票</h3>
-            <input type="hidden" id="modal-group-id">
-
-            <!-- Asset Type Selector -->
-            <div id="asset-type-selector" class="flex space-x-4 mb-4 hidden">
-                <label class="inline-flex items-center">
-                    <input type="radio" name="assetType" value="stock" checked onchange="toggleAssetType()"
-                        class="form-radio text-blue-600">
-                    <span class="ml-2">股票</span>
-                </label>
-                <label class="inline-flex items-center">
-                    <input type="radio" name="assetType" value="cash" onchange="toggleAssetType()"
-                        class="form-radio text-blue-600">
-                    <span class="ml-2">现金</span>
-                </label>
+        <div class="bg-white rounded-xl shadow-lg w-96 max-h-[90vh] flex flex-col">
+            <div class="p-6 pb-4">
+                <h3 id="modal-title" class="text-xl font-bold">添加股票</h3>
+                <input type="hidden" id="modal-group-id">
             </div>
 
-            <div class="space-y-4">
-                <div id="field-ticker">
-                    <label class="block text-sm font-medium text-slate-700 mb-1">股票代码</label>
-                    <input type="text" id="modal-ticker" placeholder="e.g. 600519"
-                        class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+            <div class="px-6 overflow-y-auto flex-1 pb-6">
+                <!-- Asset Type Selector -->
+                <div id="asset-type-selector" class="flex space-x-4 mb-4 hidden">
+                    <label class="inline-flex items-center">
+                        <input type="radio" name="assetType" value="stock" checked onchange="toggleAssetType()"
+                            class="form-radio text-blue-600">
+                        <span class="ml-2">股票</span>
+                    </label>
+                    <label class="inline-flex items-center">
+                        <input type="radio" name="assetType" value="cash" onchange="toggleAssetType()"
+                            class="form-radio text-blue-600">
+                        <span class="ml-2">现金</span>
+                    </label>
                 </div>
 
-                <div id="modal-holding-fields">
-                    <div>
-                        <label id="label-shares" class="block text-sm font-medium text-slate-700 mb-1">持仓数量</label>
-                        <input type="number" id="modal-shares" placeholder="100"
+                <div class="space-y-4">
+                    <div id="field-ticker">
+                        <label class="block text-sm font-medium text-slate-700 mb-1">股票代码</label>
+                        <input type="text" id="modal-ticker" placeholder="e.g. 600519"
                             class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
                     </div>
-                    <div id="field-cost" class="mt-4">
-                        <label class="block text-sm font-medium text-slate-700 mb-1">持仓成本</label>
-                        <input type="number" id="modal-cost" step="0.01" placeholder="100.00"
-                            class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
-                    </div>
-                </div>
 
-                <div id="field-note" class="mt-4">
-                    <label class="block text-sm font-medium text-slate-700 mb-1">备注</label>
-                    <textarea id="modal-note" placeholder="添加备注信息..." rows="2"
-                        class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none resize-none"></textarea>
+                    <div id="modal-holding-fields">
+                        <div>
+                            <label id="label-shares" class="block text-sm font-medium text-slate-700 mb-1">持仓数量</label>
+                            <input type="number" id="modal-shares" placeholder="100"
+                                class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                        </div>
+                        <div id="field-cost" class="mt-4">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">持仓成本</label>
+                            <input type="number" id="modal-cost" step="0.01" placeholder="100.00"
+                                class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                        </div>
+                        <div id="field-valuation-category" class="mt-4">
+                            <div class="flex items-center justify-between mb-1">
+                                <label class="block text-sm font-medium text-slate-700">估值分类</label>
+                                <button id="btn-view-valuation-method" type="button"
+                                    onclick="viewSelectedValuationCategory()"
+                                    class="text-xs text-blue-600 hover:text-blue-800">查看估值方法</button>
+                            </div>
+                            <select id="modal-valuation-category"
+                                class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                                <option value="">未设置</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div id="field-note">
+                        <label class="block text-sm font-medium text-slate-700 mb-1">备注</label>
+                        <textarea id="modal-note" placeholder="添加备注信息..." rows="6"
+                            class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none resize-none"></textarea>
+                    </div>
                 </div>
             </div>
 
-            <div class="mt-6 flex justify-end space-x-3">
+            <div class="px-6 py-4 border-t border-slate-100 flex justify-end space-x-3">
                 <button onclick="closeAddModal()"
                     class="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">取消</button>
                 <button onclick="submitAddStock()"
                     class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">确认添加</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="valuation-category-modal"
+        class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center">
+        <div class="bg-white rounded-xl shadow-lg w-[900px] max-h-[90vh] relative flex flex-col">
+            <button onclick="closeValuationCategoryModal()"
+                class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 z-10 bg-white/80 backdrop-blur-sm rounded-full p-1 transition-colors">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12">
+                    </path>
+                </svg>
+            </button>
+            <div class="overflow-y-auto p-8 flex-1">
+                <h2 id="valuation-category-title" class="text-2xl font-bold text-slate-900 mb-2"></h2>
+                <div id="valuation-category-content" class="markdown-content max-w-none text-slate-800 leading-relaxed">
+                </div>
             </div>
         </div>
     </div>
@@ -1031,15 +1280,18 @@
 
     <!-- Checklist Modal -->
     <div id="checklist-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center">
-        <div class="bg-white rounded-xl shadow-lg p-6 w-[500px] max-h-[90vh] flex flex-col">
-            <div class="flex justify-between items-center mb-4 border-b border-slate-100 pb-4">
-                <h3 class="text-xl font-bold text-slate-800 flex items-center">
-                    <svg class="w-6 h-6 text-indigo-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                    </svg>
-                    交易决策检查单
-                </h3>
+        <div class="bg-white rounded-xl shadow-lg p-6 w-[560px] max-h-[90vh] flex flex-col">
+            <div class="flex justify-between items-start mb-4 border-b border-slate-100 pb-4">
+                <div>
+                    <h3 class="text-xl font-bold text-slate-800 flex items-center">
+                        <svg class="w-6 h-6 text-indigo-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        投资体系决策
+                    </h3>
+                    <div class="text-xs text-slate-500 mt-1" id="checklist-subtitle"></div>
+                </div>
                 <button onclick="closeChecklistModal()" class="text-slate-400 hover:text-slate-600">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12">
@@ -1051,21 +1303,41 @@
             <div class="flex space-x-2 mb-4">
                 <button id="tab-checklist-buy" onclick="switchChecklistTab('buy')"
                     class="flex-1 py-2 text-center rounded-lg text-sm font-bold transition-colors bg-indigo-600 text-white shadow-sm">
-                    🟢 买入决策
+                    <span class="inline-flex items-center justify-center">
+                        <span class="w-2 h-2 bg-white rounded-full mr-2"></span>
+                        买入
+                    </span>
                 </button>
                 <button id="tab-checklist-sell" onclick="switchChecklistTab('sell')"
                     class="flex-1 py-2 text-center rounded-lg text-sm font-bold transition-colors bg-slate-100 text-slate-600 hover:bg-slate-200">
-                    🔴 卖出决策
+                    <span class="inline-flex items-center justify-center">
+                        <span class="w-2 h-2 bg-red-600 rounded-full mr-2"></span>
+                        卖出
+                    </span>
                 </button>
             </div>
 
-            <div class="mb-4 bg-indigo-50 text-indigo-700 p-3 rounded-lg text-sm" id="checklist-warning">
-                <p class="font-bold">🛑 慢就是快！请诚实回答以下问题：</p>
+            <div class="mb-4 p-3 rounded-lg text-sm border" id="checklist-warning">
+                <div class="flex items-start justify-between">
+                    <div class="font-bold" id="checklist-headline"></div>
+                    <button id="btn-checklist-ai" type="button" onclick="runChecklistAiJudge()"
+                        class="ml-3 inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-semibold bg-white/70 border border-slate-200 text-slate-700 hover:bg-white transition-colors">
+                        <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                        </svg>
+                        AI 先判断
+                    </button>
+                </div>
+                <div class="text-xs mt-1" id="checklist-recommendation"></div>
+                <div class="mt-3 hidden" id="checklist-ai-result"></div>
+                <div class="text-[11px] mt-2 flex items-center justify-between text-slate-600">
+                    <span id="checklist-source"></span>
+                    <span id="checklist-mode"></span>
+                </div>
             </div>
 
-            <div id="checklist-items" class="space-y-3 overflow-y-auto flex-1 p-1">
-                <!-- Items will be loaded here -->
-            </div>
+            <div id="checklist-items" class="space-y-3 overflow-y-auto flex-1 p-1"></div>
 
             <div class="mt-6 flex justify-between items-center pt-4 border-t border-slate-100">
                 <div class="text-sm text-slate-500" id="checklist-status">未通过</div>
@@ -1167,6 +1439,37 @@
         </div>
     </div>
 
+    <!-- Strategy Modal -->
+    <div id="strategy-modal"
+        class="fixed inset-0 bg-slate-900 bg-opacity-50 hidden flex items-center justify-center z-50">
+        <div class="bg-white rounded-xl shadow-xl max-w-3xl w-full mx-4 overflow-hidden flex flex-col h-[70vh]">
+            <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                <h3 class="font-bold text-slate-800" id="strategy-modal-title">操作策略</h3>
+                <button onclick="closeStrategyModal()" class="text-slate-400 hover:text-slate-600">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12">
+                        </path>
+                    </svg>
+                </button>
+            </div>
+            <div class="p-6 flex-1 overflow-hidden flex flex-col">
+                <div class="mb-2 text-sm text-slate-500" id="strategy-modal-subtitle"></div>
+                <textarea id="strategy-modal-content" placeholder="记录该标的的具体操作策略（加仓/减仓条件、止盈止损、仓位上限、网格规则等）"
+                    class="w-full flex-1 border border-slate-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-purple-500 focus:outline-none font-sans text-base leading-relaxed resize-none"></textarea>
+            </div>
+            <div class="px-6 pb-6 pt-2 flex justify-end space-x-3">
+                <button onclick="closeStrategyModal()"
+                    class="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg text-sm font-medium transition-colors">
+                    取消
+                </button>
+                <button onclick="saveStrategy()"
+                    class="bg-purple-600 text-white px-6 py-2 rounded-lg text-sm font-medium hover:bg-purple-700 transition-colors shadow-sm">
+                    保存策略
+                </button>
+            </div>
+        </div>
+    </div>
+
 </body>
 
 </html>
@@ -1174,9 +1477,138 @@
     let currentPortfolioTab = 'holdings'; // 'holdings' or 'watchlist'
     let isEditing = false;
     let currentEditingTicker = null;
+    let currentStrategyTicker = null;
+
+    // Global Markdown Renderer
+    function renderMarkdown(content) {
+        if (!content) return '';
+        if (typeof marked !== 'undefined') {
+            try {
+                return marked.parse(content);
+            } catch (e) {
+                console.error('Markdown parsing error:', e);
+                return content;
+            }
+        }
+        return content.replace(/\n/g, '<br>');
+    }
+
+    function escapeHtml(str) {
+        return String(str || '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    function markdownToPlainText(markdown) {
+        let text = String(markdown || '');
+        text = text.replace(/```[\s\S]*?```/g, ' ');
+        text = text.replace(/`([^`]+)`/g, '$1');
+        text = text.replace(/!\[([^\]]*)\]\([^)]+\)/g, '$1');
+        text = text.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');
+        text = text.replace(/^\s{0,3}>\s?/gm, '');
+        text = text.replace(/^\s{0,3}#{1,6}\s+/gm, '');
+        text = text.replace(/^\s*[-*+]\s+/gm, '');
+        text = text.replace(/^\s*\d+\.\s+/gm, '');
+        text = text.replace(/\*\*([^*]+)\*\*/g, '$1');
+        text = text.replace(/__([^_]+)__/g, '$1');
+        text = text.replace(/\*([^*]+)\*/g, '$1');
+        text = text.replace(/_([^_]+)_/g, '$1');
+        text = text.replace(/~~([^~]+)~~/g, '$1');
+        text = text.replace(/\r?\n+/g, ' ');
+        text = text.replace(/\s+/g, ' ').trim();
+        return text;
+    }
+
+    async function loadValuationCategories(force = false) {
+        try {
+            if (!force && window.valuationCategoriesLoaded) {
+                return;
+            }
+            window.valuationCategoriesRequested = true;
+            const res = await fetch('/api/valuation/categories');
+            const data = await res.json();
+            const categories = Array.isArray(data.categories) ? data.categories : [];
+            window.valuationCategories = categories;
+            window.valuationCategoriesLoaded = true;
+
+            const select = document.getElementById('modal-valuation-category');
+            if (select) {
+                const currentValue = select.value;
+                select.innerHTML = '<option value="">未设置</option>';
+                categories.forEach(c => {
+                    const option = document.createElement('option');
+                    option.value = c.id;
+                    option.textContent = c.title;
+                    select.appendChild(option);
+                });
+                if (currentValue) {
+                    select.value = currentValue;
+                }
+            }
+
+            if (window.pendingValuationCategoryId) {
+                setValuationCategorySelectValue(window.pendingValuationCategoryId);
+                window.pendingValuationCategoryId = '';
+            }
+        } catch (e) {
+            console.error('Failed to load valuation categories:', e);
+        }
+    }
+
+    function setValuationCategorySelectValue(categoryId) {
+        const select = document.getElementById('modal-valuation-category');
+        if (!select) return;
+        const value = categoryId ? String(categoryId) : '';
+        const exists = Array.from(select.options).some(o => o.value === value);
+        if (value && !exists) {
+            window.pendingValuationCategoryId = value;
+            return;
+        }
+        select.value = value;
+    }
+
+    async function openValuationCategoryModal(categoryId) {
+        const cid = String(categoryId || '').trim();
+        if (!cid) return;
+
+        const modal = document.getElementById('valuation-category-modal');
+        const titleEl = document.getElementById('valuation-category-title');
+        const contentEl = document.getElementById('valuation-category-content');
+
+        titleEl.textContent = '估值方法';
+        contentEl.innerHTML = '<div class="text-center py-6 text-slate-400">加载中...</div>';
+        modal.classList.remove('hidden');
+
+        try {
+            const res = await fetch(`/api/valuation/categories/${encodeURIComponent(cid)}`);
+            const data = await res.json();
+            if (data.status !== 'success') {
+                contentEl.innerHTML = `<div class="text-red-600">${data.error || '加载失败'}</div>`;
+                return;
+            }
+            titleEl.textContent = data.title ? `${data.title} 估值方法` : '估值方法';
+            contentEl.innerHTML = renderMarkdown(data.markdown || '');
+        } catch (e) {
+            contentEl.innerHTML = `<div class="text-red-600">${e.message || '请求失败'}</div>`;
+        }
+    }
+
+    function closeValuationCategoryModal() {
+        document.getElementById('valuation-category-modal').classList.add('hidden');
+    }
+
+    function viewSelectedValuationCategory() {
+        const cid = document.getElementById('modal-valuation-category').value;
+        if (!cid) return;
+        openValuationCategoryModal(cid);
+    }
 
     function openAddModal() {
         isEditing = false;
+        loadValuationCategories(true);
         document.getElementById('add-stock-modal').classList.remove('hidden');
         document.getElementById('modal-title').textContent = '添加资产';
         document.getElementById('modal-ticker').value = '';
@@ -1188,6 +1620,7 @@
         document.getElementById('modal-shares').value = '';
         document.getElementById('modal-cost').value = '';
         document.getElementById('modal-note').value = '';
+        document.getElementById('modal-valuation-category').value = '';
 
         // Reset type
         document.querySelector('input[name="assetType"][value="stock"]').checked = true;
@@ -1207,10 +1640,14 @@
         if (type === 'cash') {
             document.getElementById('field-ticker').classList.add('hidden');
             document.getElementById('field-cost').classList.add('hidden');
+            document.getElementById('field-valuation-category').classList.add('hidden');
             document.getElementById('label-shares').textContent = '金额 (元)';
         } else {
             document.getElementById('field-ticker').classList.remove('hidden');
             document.getElementById('field-cost').classList.remove('hidden');
+            if (currentPortfolioTab === 'holdings') {
+                document.getElementById('field-valuation-category').classList.remove('hidden');
+            }
             document.getElementById('label-shares').textContent = '持仓数量';
         }
     }
@@ -1222,6 +1659,7 @@
             return;
         }
         isEditing = true;
+        loadValuationCategories(true);
         document.getElementById('add-stock-modal').classList.remove('hidden');
         document.getElementById('modal-title').textContent = '编辑持仓';
         document.getElementById('asset-type-selector').classList.add('hidden'); // No type switch on edit
@@ -1235,16 +1673,19 @@
         document.getElementById('modal-shares').value = h.shares;
         document.getElementById('modal-cost').value = h.cost;
         document.getElementById('modal-note').value = h.note && h.note !== 'undefined' ? h.note : '';
+        setValuationCategorySelectValue(h.valuation_category_id || h.valuation_category || '');
         document.getElementById('modal-holding-fields').classList.remove('hidden');
 
         // Adjust fields if it is cash
         if (h.ticker === 'CASH') {
             document.getElementById('field-ticker').classList.add('hidden');
             document.getElementById('field-cost').classList.add('hidden');
+            document.getElementById('field-valuation-category').classList.add('hidden');
             document.getElementById('label-shares').textContent = '金额 (元)';
         } else {
             document.getElementById('field-ticker').classList.remove('hidden');
             document.getElementById('field-cost').classList.remove('hidden');
+            document.getElementById('field-valuation-category').classList.remove('hidden');
             document.getElementById('label-shares').textContent = '持仓数量';
         }
     }
@@ -1286,6 +1727,7 @@
             }
             body.note = document.getElementById('modal-note').value;
             body.group_id = document.getElementById('modal-group-id').value;
+            body.valuation_category_id = document.getElementById('modal-valuation-category').value || '';
         }
 
         try {
@@ -1359,8 +1801,8 @@
             groups.forEach(g => holdingsByGroup[g.id] = []);
 
             holdings.forEach(h => {
-                totalAssets += h.market_value;
-                totalGain += h.gain;
+                totalAssets += (h.market_value || 0);
+                totalGain += (h.gain || 0);
                 totalDayGain += (h.day_gain || 0);
 
                 const gid = h.group_id || 'default';
@@ -1374,10 +1816,11 @@
                 const groupHtml = renderGroup(group, groupHoldings, totalAssets);
                 container.insertAdjacentHTML('beforeend', groupHtml);
 
-                // Initialize Sortable for this group's tbody
-                const tbody = document.getElementById(`group-tbody-${group.id}`);
-                new Sortable(tbody, {
+                // Initialize Sortable for this group's table (tbodies)
+                const table = document.getElementById(`group-table-${group.id}`);
+                new Sortable(table, {
                     group: 'holdings', // Allow dragging between lists with same group name
+                    draggable: 'tbody.group-holding', // Only drag holding tbodies
                     animation: 150,
                     ghostClass: 'sortable-ghost',
                     dragClass: 'sortable-drag',
@@ -1456,15 +1899,15 @@
         const isDefault = group.id === 'default';
 
         // Calculate Group Stats
-        const groupTotal = holdings.reduce((sum, h) => sum + h.market_value, 0);
+        const groupTotal = holdings.reduce((sum, h) => sum + (h.market_value || 0), 0);
         const groupWeight = totalAssets > 0 ? (groupTotal / totalAssets * 100).toFixed(2) : '0.00';
 
         let rowsHtml = '';
         holdings.forEach(h => {
-            const isUp = h.gain >= 0;
+            const isUp = (h.gain || 0) >= 0;
             const colorClass = isUp ? 'text-red-600' : 'text-green-600';
             const sign = isUp ? '+' : '';
-            const weightNum = totalAssets > 0 ? (h.market_value / totalAssets * 100) : 0;
+            const weightNum = totalAssets > 0 ? ((h.market_value || 0) / totalAssets * 100) : 0;
             const weight = weightNum.toFixed(2);
 
             // Weight Warning
@@ -1487,61 +1930,71 @@
             const isCash = h.ticker === 'CASH';
 
             rowsHtml += `
-                <tr class="hover:bg-slate-50 transition-colors group/row" data-ticker="${h.ticker}">
-                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900 flex items-center">
-                        <div class="drag-handle cursor-move text-slate-400 hover:text-slate-600 mr-2" title="Drag to move">
-                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8h16M4 16h16"></path></svg>
-                        </div>
-                        <div class="flex items-center">
-                            <div>
-                                <div class="text-sm font-medium text-slate-900 cursor-pointer hover:text-blue-600" onclick="analyzeStock('${h.ticker}'); switchTab('valuation')">${h.name}</div>
-                                <div class="flex items-center mt-0.5 space-x-2">
-                                    <span class="text-xs text-slate-500">${h.ticker}</span>
-                                    ${h.industry_cn ? `<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-indigo-50 text-indigo-600 border border-indigo-100" title="${h.sector_cn || ''}">${h.industry_cn}</span>` : ''}
+                <tbody class="hover:bg-slate-50 transition-colors border-b border-slate-100 group/body group-holding" data-ticker="${h.ticker}">
+                    <tr class="group/row">
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900 flex items-center border-none">
+                            <div class="drag-handle cursor-move text-slate-400 hover:text-slate-600 mr-2" title="Drag to move">
+                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8h16M4 16h16"></path></svg>
+                            </div>
+                            <div class="flex items-center">
+                                <div>
+                                    <div class="text-sm font-medium text-slate-900 cursor-pointer hover:text-blue-600" onclick="analyzeStock('${h.ticker}'); switchTab('valuation')">${h.name}</div>
+                                    <div class="mt-0.5">
+                                        <div class="text-xs text-slate-500">${h.ticker}</div>
+                                        ${(h.valuation_category_id && h.valuation_category_title) ? `<div class="mt-1"><span class="inline-flex text-[11px] bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full cursor-pointer hover:bg-blue-200" onclick="event.stopPropagation(); openValuationCategoryModal('${String(h.valuation_category_id).replace(/'/g, "\\'")}')">${h.valuation_category_title}</span></div>` : ''}
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-slate-600">
-                        ${isCash ? '-' : h.shares}
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-slate-900">
-                        <div>${h.current_price}</div>
-                        <div class="text-xs text-slate-400 mt-0.5">${h.cost}</div>
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-right font-medium text-slate-900">
-                        ${h.market_value.toLocaleString()}
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-right ${weightClass} font-medium">
-                        ${weight}%${weightIcon}
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-right ${colorClass} font-bold">
-                        ${sign}${h.gain.toLocaleString()}
-                        <div class="text-xs font-normal mt-0.5">${sign}${h.gain_percent}%</div>
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-right ${dayChangeClass} font-medium">
-                        <div>${dayGainSign}${dayGain.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-                        <div class="text-xs font-normal mt-0.5">${dayChangeSign}${dayChange}%</div>
-                    </td>
-                    <td class="px-6 py-4 text-sm text-slate-500 min-w-[300px] max-w-lg cursor-pointer hover:bg-slate-50 group relative" onclick="openNoteModal('${h.ticker}')">
-                        <div class="line-clamp-4 whitespace-pre-wrap text-xs leading-relaxed text-slate-600">${h.note || '<span class="text-slate-300 italic text-sm">点击添加笔记...</span>'}</div>
-                        <div class="hidden group-hover:flex absolute inset-0 items-center justify-center bg-white bg-opacity-95 text-blue-600 font-medium text-sm shadow-sm backdrop-blur-sm transition-all border-2 border-blue-100 rounded-lg m-1">
-                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
-                            查看完整笔记
-                        </div>
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-center">
-                        <a href="#" class="text-blue-600 hover:text-blue-900 mr-2 text-xs font-medium" onclick="analyzeStock('${h.ticker}'); switchTab('valuation')">分析</a>
-                        <a href="#" class="text-indigo-600 hover:text-indigo-900 mr-2 text-xs font-medium" onclick="openEditModal('${h.ticker}')">编辑</a>
-                        <a href="#" class="text-purple-600 hover:text-purple-900 mr-2 text-xs font-medium" onclick="openDecisionModal('${h.ticker}')">决策</a>
-                        <a href="#" class="text-red-600 hover:text-red-900 text-xs font-medium" onclick="removeStock('${h.ticker}', 'holdings')">删除</a>
-                    </td>
-                </tr>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-slate-600 border-none">
+                            ${isCash ? '-' : h.shares}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-slate-900 border-none">
+                            <div>${h.current_price || 0}</div>
+                            <div class="text-xs text-slate-400 mt-0.5">${h.cost || 0}</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-right font-medium text-slate-900 border-none">
+                            ${(h.market_value || 0).toLocaleString()}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-right ${weightClass} font-medium border-none">
+                            ${weight}%${weightIcon}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-right ${colorClass} font-bold border-none">
+                            ${sign}${(h.gain || 0).toLocaleString()}
+                            <div class="text-xs font-normal mt-0.5">${sign}${h.gain_percent || 0}%</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-right ${dayChangeClass} font-medium border-none">
+                            <div>${dayGainSign}${dayGain.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                            <div class="text-xs font-normal mt-0.5">${dayChangeSign}${dayChange}%</div>
+                        </td>
+                        <td class="px-6 py-4 text-sm text-slate-500 min-w-[300px] max-w-lg cursor-pointer hover:bg-slate-50 group relative border-none" onclick="openNoteModal('${h.ticker}')">
+                            <div class="line-clamp-4 whitespace-pre-wrap text-xs leading-relaxed text-slate-600">${h.note || '<span class="text-slate-300 italic text-sm">点击添加笔记...</span>'}</div>
+                            <div class="hidden group-hover:flex absolute inset-0 items-center justify-center bg-white bg-opacity-95 text-blue-600 font-medium text-sm shadow-sm backdrop-blur-sm transition-all border-2 border-blue-100 rounded-lg m-1">
+                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                                查看完整笔记
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-center border-none">
+                            <a href="#" class="text-blue-600 hover:text-blue-900 mr-2 text-xs font-medium" onclick="analyzeStock('${h.ticker}'); switchTab('valuation')">分析</a>
+                            <a href="#" class="text-indigo-600 hover:text-indigo-900 mr-2 text-xs font-medium" onclick="openEditModal('${h.ticker}')">编辑</a>
+                            <a href="#" class="text-purple-600 hover:text-purple-900 mr-2 text-xs font-medium" onclick="openChecklistModal('${h.ticker}')">决策</a>
+                            <a href="#" class="text-red-600 hover:text-red-900 text-xs font-medium" onclick="removeStock('${h.ticker}', 'holdings')">删除</a>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td colspan="9" class="px-6 pb-3 pt-0 border-none">
+                             <div class="text-[11px] text-purple-700 bg-purple-50 border border-purple-100 rounded px-3 py-1.5 cursor-pointer hover:bg-purple-100 w-full" title="点击编辑操作策略" onclick="openStrategyModal('${h.ticker}')">
+                                <span class="font-bold mr-1">💡 策略:</span>
+                                ${h.strategy ? h.strategy.replace(/\n/g, '<br>') : '<span class=\"text-purple-300 italic\">点击添加操作策略（如：加仓条件、止盈目标等）...</span>'}
+                             </div>
+                        </td>
+                    </tr>
+                </tbody>
              `;
         });
 
         if (holdings.length === 0) {
-            rowsHtml = `<tr><td colspan="8" class="text-center py-8 text-slate-400 text-sm">暂无持仓，拖拽至此或添加股票</td></tr>`;
+            rowsHtml = `<tbody><tr><td colspan="9" class="text-center py-8 text-slate-400 text-sm">暂无持仓，拖拽至此或添加股票</td></tr></tbody>`;
         }
 
         return `
@@ -1566,8 +2019,8 @@
                     ` : ''}
                 </div>
                 <div class="overflow-x-auto">
-                    <table class="min-w-full divide-y divide-slate-200">
-                        <thead class="bg-white">
+                    <table class="min-w-full" id="group-table-${group.id}" data-group-id="${group.id}">
+                        <thead class="bg-white border-b border-slate-200">
                             <tr>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider w-1/4">股票</th>
                                 <th class="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">持仓</th>
@@ -1580,9 +2033,7 @@
                                 <th class="px-6 py-3 text-center text-xs font-medium text-slate-500 uppercase tracking-wider">操作</th>
                             </tr>
                         </thead>
-                        <tbody class="bg-white divide-y divide-slate-200 min-h-[50px]" id="group-tbody-${group.id}" data-group-id="${group.id}">
-                            ${rowsHtml}
-                        </tbody>
+                        ${rowsHtml}
                     </table>
                 </div>
             </div>
@@ -2048,7 +2499,15 @@
             console.log("Articles loaded:", data);
 
             // Handle both array (direct list) and object ({articles: [...]}) formats
-            const articles = Array.isArray(data) ? data : (data.articles || []);
+            const allArticles = Array.isArray(data) ? data : (data.articles || []);
+
+            const mySystem = allArticles.find(a => (a.title || '').trim() === '我的投资体系' && (a.author || '').trim() === '我') ||
+                allArticles.find(a => (a.title || '').trim() === '我的投资体系') ||
+                null;
+            window.mySystemArticleId = mySystem ? mySystem.id : null;
+            renderMySystemCard(mySystem);
+
+            const articles = mySystem ? allArticles.filter(a => a.id !== mySystem.id) : allArticles.slice();
 
             if (articles.length > 0) {
                 // Sort by date desc
@@ -2056,11 +2515,14 @@
 
                 const cardsHtml = articles.map(article => {
                     const dateStr = new Date(article.created_at * 1000).toLocaleDateString();
-                    const tagsHtml = article.tags.map(tag =>
+                    const tags = Array.isArray(article.tags) ? article.tags : [];
+                    const tagsHtml = tags.map(tag =>
                         `<span class="bg-blue-50 text-blue-600 text-xs px-2 py-1 rounded-full">${tag}</span>`
                     ).join('');
 
                     const safeId = article.id.replace(/'/g, "\\'");
+                    const excerpt = markdownToPlainText(article.content || '');
+                    const excerptShort = excerpt.length > 160 ? excerpt.slice(0, 160) + '...' : excerpt;
 
                     return `
                         <div class="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden hover:shadow-md transition-shadow cursor-pointer group" onclick="openReaderModal('${safeId}')">
@@ -2073,7 +2535,7 @@
                                 </div>
                                 <h3 class="text-xl font-bold text-slate-800 mb-2 group-hover:text-blue-600 transition-colors line-clamp-2">${article.title}</h3>
                                 <p class="text-sm text-slate-500 mb-4">By ${article.author}</p>
-                                <p class="text-slate-600 text-sm line-clamp-3 mb-6">${article.content}</p>
+                                <p class="text-slate-600 text-sm line-clamp-3 mb-6">${escapeHtml(excerptShort)}</p>
                                 
                                 <div class="flex justify-end pt-4 border-t border-slate-50 space-x-3" onclick="event.stopPropagation()">
                                     <button onclick="openArticleModal('${safeId}')" class="text-slate-400 hover:text-blue-600 text-sm font-medium">编辑</button>
@@ -2094,6 +2556,341 @@
         }
     }
 
+    async function loadStrategies() {
+        const grid = document.getElementById('strategies-grid');
+        if (!grid) return;
+        grid.innerHTML = '<div class="col-span-full text-center py-12 text-slate-400">加载中...</div>';
+
+        try {
+            const res = await fetch('/api/strategies');
+            const data = await res.json();
+            const list = Array.isArray(data) ? data : [];
+            if (!list.length) {
+                grid.innerHTML = '<div class="col-span-full text-center py-12 text-slate-400">暂无策略</div>';
+                window.__strategiesLoaded = true;
+                return;
+            }
+
+            list.sort((a, b) => ((a.title || a.slug || '')).localeCompare((b.title || b.slug || ''), 'zh-Hans-CN'));
+            const cardsHtml = list.map(item => {
+                const title = item.title || item.slug;
+                const dateStr = item.updated_at ? new Date(item.updated_at * 1000).toLocaleDateString() : '';
+                const excerpt = (item.excerpt || '').trim();
+                const excerptShort = excerpt.length > 140 ? excerpt.slice(0, 140) + '...' : excerpt;
+                const safeSlug = (item.slug || '').replace(/'/g, "\\'");
+                return `
+                    <div class="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden hover:shadow-md transition-shadow cursor-pointer group" onclick="openStrategyReader('${safeSlug}')">
+                        <div class="p-6">
+                            <div class="flex justify-between items-start mb-4">
+                                <div class="flex space-x-2">
+                                    <span class="bg-slate-100 text-slate-600 text-xs px-2 py-1 rounded-full">策略</span>
+                                </div>
+                                <span class="text-xs text-slate-400">${dateStr || ''}</span>
+                            </div>
+                            <h3 class="text-xl font-bold text-slate-800 mb-2 group-hover:text-blue-600 transition-colors line-clamp-2">${escapeHtml(title)}</h3>
+                            <p class="text-slate-600 text-sm line-clamp-3">${escapeHtml(excerptShort || '点击阅读')}</p>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            grid.innerHTML = cardsHtml;
+            window.__strategiesLoaded = true;
+        } catch (e) {
+            grid.innerHTML = '<div class="col-span-full text-center py-12 text-red-400">加载失败: ' + escapeHtml(e.message) + '</div>';
+            window.__strategiesLoaded = true;
+        }
+    }
+
+    async function openStrategyReader(slug) {
+        if (!slug) return;
+        try {
+            const res = await fetch('/api/strategies/' + encodeURIComponent(slug));
+            const data = await res.json();
+            if (!data || data.error) return;
+
+            document.getElementById('reader-title').textContent = data.title || slug;
+            document.getElementById('reader-author').textContent = '策略库';
+            document.getElementById('reader-date').textContent = data.updated_at ? new Date(data.updated_at * 1000).toLocaleString() : '';
+            document.getElementById('reader-tags').innerHTML = `<span class="bg-slate-100 text-slate-600 text-xs px-2 py-1 rounded-full">${escapeHtml(slug)}</span>`;
+
+            const contentEl = document.getElementById('reader-content');
+            contentEl.innerHTML = renderMarkdown(data.content || '');
+            contentEl.classList.add('markdown-content');
+
+            window.__currentStrategySlug = slug;
+            const aiBtn = document.getElementById('reader-ai-btn');
+            if (aiBtn) aiBtn.classList.remove('hidden');
+            const aiResult = document.getElementById('reader-ai-result');
+            if (aiResult) { aiResult.classList.add('hidden'); aiResult.innerHTML = ''; }
+
+            document.getElementById('reader-modal').classList.remove('hidden');
+        } catch (e) {
+            console.error(e);
+        }
+    }
+
+    async function runStrategyAi() {
+        const slug = window.__currentStrategySlug;
+        if (!slug) return;
+        const btn = document.getElementById('reader-ai-btn');
+        const resultEl = document.getElementById('reader-ai-result');
+        if (!btn || !resultEl) return;
+        const original = btn.textContent;
+        btn.disabled = true;
+        btn.textContent = '生成中...';
+        resultEl.classList.remove('hidden');
+        resultEl.innerHTML = '<div class="text-xs text-slate-500">AI 正在提炼执行要点...</div>';
+        try {
+            const res = await fetch('/api/strategies/ai', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ slug })
+            });
+            const data = await res.json();
+            if (data && data.status === 'success') {
+                resultEl.innerHTML = renderMarkdown(data.result || '');
+            } else {
+                resultEl.innerHTML = `<div class="text-red-600 text-xs bg-red-50 border border-red-200 rounded-lg p-3">调用失败：${escapeHtml((data && (data.error || data.message)) || '未知错误')}</div>`;
+            }
+        } catch (e) {
+            resultEl.innerHTML = `<div class="text-red-600 text-xs bg-red-50 border border-red-200 rounded-lg p-3">请求异常：${escapeHtml(e.message)}</div>`;
+        } finally {
+            btn.disabled = false;
+            btn.textContent = original;
+        }
+    }
+
+    function switchStrategiesSubtab(tab) {
+        const next = tab === 'guigui' ? 'guigui' : 'library';
+        window.__strategiesSubtab = next;
+        const btnLibrary = document.getElementById('strategies-subtab-library');
+        const btnGuigui = document.getElementById('strategies-subtab-guigui');
+        const searchWrap = document.getElementById('strategies-search-wrap');
+        const viewLibrary = document.getElementById('strategies-library-view');
+        const viewGuigui = document.getElementById('strategies-guigui-view');
+
+        if (btnLibrary) {
+            btnLibrary.className = next === 'library'
+                ? 'px-3 py-2 rounded-md text-sm font-medium transition-colors bg-blue-50 text-blue-700'
+                : 'px-3 py-2 rounded-md text-sm font-medium transition-colors text-slate-600 hover:text-slate-900 hover:bg-slate-50';
+        }
+        if (btnGuigui) {
+            btnGuigui.className = next === 'guigui'
+                ? 'px-3 py-2 rounded-md text-sm font-medium transition-colors bg-blue-50 text-blue-700'
+                : 'px-3 py-2 rounded-md text-sm font-medium transition-colors text-slate-600 hover:text-slate-900 hover:bg-slate-50';
+        }
+
+        if (searchWrap) searchWrap.classList.toggle('hidden', next !== 'library');
+        if (viewLibrary) viewLibrary.classList.toggle('hidden', next !== 'library');
+        if (viewGuigui) viewGuigui.classList.toggle('hidden', next !== 'guigui');
+
+        if (next === 'library') {
+            if (!window.__strategiesLoaded) loadStrategies();
+        } else {
+            initGuiguiStrategyUi();
+        }
+    }
+
+    function initGuiguiStrategyUi() {
+        const phase1 = document.getElementById('guigui-phase1-result');
+        const phase2 = document.getElementById('guigui-phase2-result');
+        if (phase1 && !phase1.dataset.inited) {
+            phase1.dataset.inited = '1';
+            phase1.innerHTML = '<div class="text-slate-500 text-sm">点击右上角“生成界面清单”，把 Phase 1 文档转换成可执行的表单与输出模板。</div>';
+        }
+        if (phase2 && !phase2.dataset.inited) {
+            phase2.dataset.inited = '1';
+            phase2.innerHTML = '<div class="text-slate-500 text-sm">上传年报 PDF 后，再点击“生成界面清单”，获得提取字段、提示文案与 data_pack_report 模板。</div>';
+        }
+
+        const fileInput = document.getElementById('guigui-pdf');
+        const fileNameEl = document.getElementById('guigui-pdf-name');
+        if (fileInput && !fileInput.dataset.bound) {
+            fileInput.dataset.bound = '1';
+            fileInput.addEventListener('change', () => {
+                const f = fileInput.files && fileInput.files[0];
+                if (fileNameEl) fileNameEl.textContent = f ? f.name : '未上传';
+            });
+        }
+    }
+
+    async function openGuiguiDoc(slug) {
+        if (!slug) return;
+        try {
+            const res = await fetch('/api/guigui_strategy/docs/' + encodeURIComponent(slug));
+            const data = await res.json();
+            if (!data || data.error) return;
+
+            document.getElementById('reader-title').textContent = data.title || slug;
+            document.getElementById('reader-author').textContent = '龟龟投资策略 v0.15';
+            document.getElementById('reader-date').textContent = data.updated_at ? new Date(data.updated_at * 1000).toLocaleString() : '';
+            document.getElementById('reader-tags').innerHTML = `<span class="bg-slate-100 text-slate-600 text-xs px-2 py-1 rounded-full">${escapeHtml(slug)}</span>`;
+
+            const aiBtn = document.getElementById('reader-ai-btn');
+            const aiResult = document.getElementById('reader-ai-result');
+            if (aiBtn) aiBtn.classList.add('hidden');
+            if (aiResult) { aiResult.classList.add('hidden'); aiResult.innerHTML = ''; }
+
+            const contentEl = document.getElementById('reader-content');
+            contentEl.innerHTML = renderMarkdown(data.content || '');
+            contentEl.classList.add('markdown-content');
+            document.getElementById('reader-modal').classList.remove('hidden');
+        } catch (e) {
+            console.error(e);
+        }
+    }
+
+    function _getGuiguiInputs() {
+        const stock = (document.getElementById('guigui-stock')?.value || '').trim();
+        const channel = (document.getElementById('guigui-channel')?.value || '').trim();
+        const targetYear = (document.getElementById('guigui-year')?.value || '').trim();
+        const pdfName = (document.getElementById('guigui-pdf-name')?.textContent || '').trim();
+        return { stock, channel, targetYear, pdfName: pdfName && pdfName !== '未上传' ? pdfName : '' };
+    }
+
+    async function runGuiguiPhase1() {
+        const targetEl = document.getElementById('guigui-phase1-result');
+        if (!targetEl) return;
+        const { stock, channel, targetYear } = _getGuiguiInputs();
+        if (!stock) {
+            targetEl.innerHTML = `<div class="text-red-600 text-xs bg-red-50 border border-red-200 rounded-lg p-3">请填写标的代码或名称</div>`;
+            return;
+        }
+        targetEl.innerHTML = '<div class="text-xs text-slate-500">正在执行数据采集...</div>';
+        try {
+            const res = await fetch('/api/guigui_strategy/phase1/run', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ stock, channel, target_year: targetYear })
+            });
+            const data = await res.json();
+            if (data && data.status === 'success') {
+                const extra = data.file_path ? `<div class="text-xs text-slate-500 mt-2">已保存到：${escapeHtml(data.file_path)}</div>` : '';
+                targetEl.innerHTML = renderMarkdown(data.result || '') + extra;
+            } else {
+                const msg = (data && (data.error || data.message)) || '未知错误';
+                targetEl.innerHTML = `<div class="text-red-600 text-xs bg-red-50 border border-red-200 rounded-lg p-3">执行失败：${escapeHtml(msg)}</div>`;
+            }
+        } catch (e) {
+            targetEl.innerHTML = `<div class="text-red-600 text-xs bg-red-50 border border-red-200 rounded-lg p-3">请求异常：${escapeHtml(e.message)}</div>`;
+        }
+    }
+
+    async function runGuiguiAi(step) {
+        const s = step === 'phase3' ? 'phase3' : (step === 'phase2' ? 'phase2' : 'phase1');
+        const { stock, channel, targetYear, pdfName } = _getGuiguiInputs();
+        const payload = {
+            step: s,
+            stock,
+            channel,
+            target_year: targetYear,
+            pdf_name: pdfName
+        };
+
+        let targetEl = null;
+        if (s === 'phase1') targetEl = document.getElementById('guigui-phase1-result');
+        if (s === 'phase2') targetEl = document.getElementById('guigui-phase2-result');
+        if (s === 'phase3') targetEl = document.getElementById('guigui-phase3-result');
+
+        if (!targetEl) return;
+        if (s === 'phase3') {
+            payload.data_pack_market = (document.getElementById('guigui-pack-market')?.value || '').trim();
+            payload.data_pack_report = (document.getElementById('guigui-pack-report')?.value || '').trim();
+            targetEl.classList.remove('hidden');
+        }
+
+        targetEl.innerHTML = '<div class="text-xs text-slate-500">AI 正在生成...</div>';
+        try {
+            const res = await fetch('/api/guigui_strategy/ai', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const data = await res.json();
+            if (data && data.status === 'success') {
+                targetEl.innerHTML = renderMarkdown(data.result || '');
+            } else {
+                const msg = (data && (data.error || data.message)) || '未知错误';
+                targetEl.innerHTML = `<div class="text-red-600 text-xs bg-red-50 border border-red-200 rounded-lg p-3">调用失败：${escapeHtml(msg)}</div>`;
+            }
+        } catch (e) {
+            targetEl.innerHTML = `<div class="text-red-600 text-xs bg-red-50 border border-red-200 rounded-lg p-3">请求异常：${escapeHtml(e.message)}</div>`;
+        }
+    }
+
+    function filterStrategies() {
+        const q = (document.getElementById('strategies-search').value || '').trim().toLowerCase();
+        const grid = document.getElementById('strategies-grid');
+        if (!grid) return;
+        const cards = grid.querySelectorAll('.bg-white.rounded-xl');
+        cards.forEach(card => {
+            const text = (card.textContent || '').toLowerCase();
+            card.style.display = !q || text.includes(q) ? '' : 'none';
+        });
+    }
+
+    function renderMySystemCard(article) {
+        const container = document.getElementById('my-system-card');
+        const btnRead = document.getElementById('btn-my-system-read');
+        if (!container) return;
+
+        if (!article) {
+            if (btnRead) btnRead.classList.add('hidden');
+            container.innerHTML = `
+                <div class="text-slate-600 text-base leading-relaxed">
+                    还没有创建“我的投资体系”。建议用一份固定模板写清楚：核心定位、只做的方向、仓位铁律、买卖纪律、做T规则。
+                </div>
+                <div class="mt-4">
+                    <button onclick="openMySystemEditor()" class="w-full bg-indigo-600 text-white px-4 py-2 rounded-lg text-base font-medium hover:bg-indigo-700 transition-colors shadow-sm">
+                        创建我的投资体系
+                    </button>
+                </div>
+            `;
+            return;
+        }
+
+        if (btnRead) btnRead.classList.remove('hidden');
+        const dateStr = article.created_at ? new Date(article.created_at * 1000).toLocaleDateString() : '';
+        const html = renderMarkdown(article.content || '');
+        container.innerHTML = `
+            <div class="flex items-center justify-between text-sm text-slate-400 mb-3">
+                <div>更新: ${dateStr || '--'}</div>
+                <div class="text-slate-500">固定查看区</div>
+            </div>
+            <div class="markdown-content text-slate-800 text-base leading-7 max-h-[680px] overflow-auto pr-2">
+                ${html || '<div class="text-slate-400">暂无内容</div>'}
+            </div>
+        `;
+    }
+
+    async function openMySystemEditor() {
+        const id = window.mySystemArticleId || null;
+        await openArticleModal(id);
+        window.__isMySystemEditing = true;
+        const titleInput = document.getElementById('article-title');
+        const authorInput = document.getElementById('article-author');
+        const tagsField = document.getElementById('article-tags-field');
+        const importSection = document.getElementById('article-import-section');
+
+        document.getElementById('article-modal-title').textContent = id ? '编辑我的投资体系' : '创建我的投资体系';
+        if (titleInput) {
+            titleInput.value = '我的投资体系';
+            titleInput.disabled = true;
+        }
+        if (authorInput) {
+            authorInput.value = '我';
+            authorInput.disabled = true;
+        }
+        if (tagsField) tagsField.classList.add('hidden');
+        if (importSection) importSection.classList.add('hidden');
+    }
+
+    async function openMySystemReader() {
+        if (!window.mySystemArticleId) return;
+        await openReaderModal(window.mySystemArticleId);
+    }
+
     async function openReaderModal(id) {
         try {
             const res = await fetch('/api/system/articles');
@@ -2109,9 +2906,14 @@
                     `<span class="bg-slate-100 text-slate-600 text-xs px-2 py-1 rounded-full">${tag}</span>`
                 ).join('');
 
+                const aiBtn = document.getElementById('reader-ai-btn');
+                const aiResult = document.getElementById('reader-ai-result');
+                if (aiBtn) aiBtn.classList.add('hidden');
+                if (aiResult) { aiResult.classList.add('hidden'); aiResult.innerHTML = ''; }
+
                 // Render Markdown content
                 const contentEl = document.getElementById('reader-content');
-                contentEl.innerHTML = marked.parse(article.content);
+                contentEl.innerHTML = renderMarkdown(article.content);
                 contentEl.classList.add('markdown-content'); // Add markdown styling class
 
                 document.getElementById('reader-modal').classList.remove('hidden');
@@ -2127,6 +2929,15 @@
 
     async function openArticleModal(id = null) {
         document.getElementById('article-modal').classList.remove('hidden');
+        window.__isMySystemEditing = false;
+        const titleInput = document.getElementById('article-title');
+        const authorInput = document.getElementById('article-author');
+        const tagsField = document.getElementById('article-tags-field');
+        const importSection = document.getElementById('article-import-section');
+        if (titleInput) titleInput.disabled = false;
+        if (authorInput) authorInput.disabled = false;
+        if (tagsField) tagsField.classList.remove('hidden');
+        if (importSection) importSection.classList.remove('hidden');
 
         if (id) {
             // Edit Mode
@@ -2157,6 +2968,15 @@
 
     function closeArticleModal() {
         document.getElementById('article-modal').classList.add('hidden');
+        window.__isMySystemEditing = false;
+        const titleInput = document.getElementById('article-title');
+        const authorInput = document.getElementById('article-author');
+        const tagsField = document.getElementById('article-tags-field');
+        const importSection = document.getElementById('article-import-section');
+        if (titleInput) titleInput.disabled = false;
+        if (authorInput) authorInput.disabled = false;
+        if (tagsField) tagsField.classList.remove('hidden');
+        if (importSection) importSection.classList.remove('hidden');
     }
 
     async function importFromUrl() {
@@ -2210,11 +3030,17 @@
 
     async function saveArticle() {
         const id = document.getElementById('article-id').value;
-        const title = document.getElementById('article-title').value;
-        const author = document.getElementById('article-author').value;
+        let title = document.getElementById('article-title').value;
+        let author = document.getElementById('article-author').value;
         const content = document.getElementById('article-content').value;
         const tagsStr = document.getElementById('article-tags').value;
-        const tags = tagsStr.split(/[,，]/).map(t => t.trim()).filter(t => t);
+        let tags = tagsStr.split(/[,，]/).map(t => t.trim()).filter(t => t);
+
+        if (window.__isMySystemEditing) {
+            title = '我的投资体系';
+            author = '我';
+            tags = [];
+        }
 
         if (!title || !content) {
             alert('标题和内容不能为空');
@@ -2334,7 +3160,7 @@
                                         </div>
                                     </div>
                                     
-                                    <div class="text-slate-600 text-sm leading-relaxed markdown-content">${marked.parse(entry.content)}</div>
+                                    <div class="text-slate-600 text-sm leading-relaxed markdown-content">${renderMarkdown(entry.content)}</div>
                                     
                                     ${entry.tags && entry.tags.length > 0 ? `
                                         <div class="mt-4 flex flex-wrap gap-2">
@@ -2351,7 +3177,7 @@
 
         } catch (e) {
             console.error(e);
-            container.innerHTML = '<div class="text-center py-4 text-red-400">加载日志失败</div>';
+            container.innerHTML = `<div class="text-center py-4 text-red-400">加载日志失败: ${e.message}</div>`;
         }
     }
 
@@ -2503,10 +3329,23 @@
 
     let checklistTicker = null;
     let checklistType = 'buy'; // 'buy' or 'sell'
+    let checklistMode = 'all'; // 'all' or 'any'
+    let checklistSource = 'checklist';
+    let checklistUpdatedAt = null;
 
     async function openChecklistModal(ticker = null) {
         checklistTicker = ticker;
         document.getElementById('checklist-modal').classList.remove('hidden');
+        const subtitleEl = document.getElementById('checklist-subtitle');
+        const tickerText = checklistTicker ? `标的：<span class="font-semibold text-slate-700">${escapeHtml(checklistTicker)}</span>` : '标的：--';
+        if (subtitleEl) {
+            subtitleEl.innerHTML = `${tickerText} · <a href="#" class="text-indigo-600 hover:text-indigo-800" onclick="switchTab('system'); return false;">打开投资体系</a>`;
+        }
+        const aiEl = document.getElementById('checklist-ai-result');
+        if (aiEl) {
+            aiEl.classList.add('hidden');
+            aiEl.innerHTML = '';
+        }
         // Default to buy, or maybe smart inference? For now default to buy.
         switchChecklistTab('buy');
     }
@@ -2514,6 +3353,11 @@
     function closeChecklistModal() {
         document.getElementById('checklist-modal').classList.add('hidden');
         checklistTicker = null;
+        const aiEl = document.getElementById('checklist-ai-result');
+        if (aiEl) {
+            aiEl.classList.add('hidden');
+            aiEl.innerHTML = '';
+        }
     }
 
     function switchChecklistTab(type) {
@@ -2521,17 +3365,26 @@
         const buyBtn = document.getElementById('tab-checklist-buy');
         const sellBtn = document.getElementById('tab-checklist-sell');
         const warning = document.getElementById('checklist-warning');
+        const headlineEl = document.getElementById('checklist-headline');
+        const recommendationEl = document.getElementById('checklist-recommendation');
+        const aiEl = document.getElementById('checklist-ai-result');
+        if (aiEl) {
+            aiEl.classList.add('hidden');
+            aiEl.innerHTML = '';
+        }
 
         if (type === 'buy') {
             buyBtn.className = 'flex-1 py-2 text-center rounded-lg text-sm font-bold transition-colors bg-indigo-600 text-white shadow-sm';
             sellBtn.className = 'flex-1 py-2 text-center rounded-lg text-sm font-bold transition-colors bg-slate-100 text-slate-600 hover:bg-slate-200';
-            warning.className = 'mb-4 bg-indigo-50 text-indigo-700 p-3 rounded-lg text-sm';
-            warning.innerHTML = '<p class="font-bold">🛑 慢就是快！请确认买入逻辑：</p>';
+            warning.className = 'mb-4 bg-indigo-50 text-indigo-800 p-3 rounded-lg text-sm border border-indigo-100';
+            if (headlineEl) headlineEl.textContent = '按投资体系核对买入条件';
+            if (recommendationEl) recommendationEl.textContent = '';
         } else {
             buyBtn.className = 'flex-1 py-2 text-center rounded-lg text-sm font-bold transition-colors bg-slate-100 text-slate-600 hover:bg-slate-200';
             sellBtn.className = 'flex-1 py-2 text-center rounded-lg text-sm font-bold transition-colors bg-red-600 text-white shadow-sm';
-            warning.className = 'mb-4 bg-red-50 text-red-700 p-3 rounded-lg text-sm';
-            warning.innerHTML = '<p class="font-bold">⚠️ 慎重决策！请确认卖出理由：</p>';
+            warning.className = 'mb-4 bg-red-50 text-red-800 p-3 rounded-lg text-sm border border-red-100';
+            if (headlineEl) headlineEl.textContent = '按投资体系核对卖出条件';
+            if (recommendationEl) recommendationEl.textContent = '';
         }
 
         loadChecklist();
@@ -2543,40 +3396,57 @@
 
         try {
             const res = await fetch(`/api/system/checklist?type=${checklistType}`);
-            const items = await res.json();
+            const payload = await res.json();
+
+            let items = [];
+            let mode = 'all';
+            let source = 'checklist';
+            let updatedAt = null;
+
+            if (Array.isArray(payload)) {
+                items = payload;
+            } else if (payload && typeof payload === 'object') {
+                items = Array.isArray(payload.items) ? payload.items : [];
+                mode = payload.mode === 'any' ? 'any' : 'all';
+                source = payload.source || 'checklist';
+                updatedAt = payload.updated_at || null;
+            }
+
+            checklistMode = mode;
+            checklistSource = source;
+            checklistUpdatedAt = updatedAt;
 
             if (items.length === 0) {
-                container.innerHTML = '<div class="text-center py-4 text-slate-400">暂无检查项</div>';
+                container.innerHTML = '<div class="text-center py-6 text-slate-400 text-sm">暂无规则。请在“投资体系”里用标题“买入/卖出”下的列表维护规则。</div>';
+                updateChecklistMeta();
+                validateChecklist();
                 return;
             }
 
             let html = '';
-            // Add ticker info if present
-            if (checklistTicker) {
-                html += `<div class="mb-3 px-3 py-2 bg-slate-50 text-slate-700 rounded-lg text-sm font-medium border border-slate-200">针对标的: ${checklistTicker}</div>`;
-            } else {
-                // Try to fallback to current analysis stock if visible
-                const currentTicker = document.getElementById('stock-ticker').textContent.trim();
-                if (currentTicker && currentTicker !== '--') {
-                    checklistTicker = currentTicker;
-                    html += `<div class="mb-3 px-3 py-2 bg-slate-50 text-slate-700 rounded-lg text-sm font-medium border border-slate-200">针对标的: ${checklistTicker}</div>`;
-                }
-            }
-
             items.forEach((item, index) => {
+                const obj = (item && typeof item === 'object') ? item : { text: String(item || ''), required: true };
+                const text = String(obj.text || '').trim();
+                if (!text) return;
+                const required = obj.required !== false;
+                const labelHtml = required
+                    ? escapeHtml(text)
+                    : `${escapeHtml(text)}<span class="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-500">可选</span>`;
+
                 html += `
                     <div class="flex items-start p-3 hover:bg-slate-50 rounded-lg transition-colors border border-transparent hover:border-slate-100">
                         <div class="flex items-center h-5">
-                            <input id="check-item-${index}" type="checkbox" onchange="validateChecklist()"
+                            <input id="check-item-${index}" type="checkbox" data-required="${required ? '1' : '0'}" data-text="${escapeHtml(text)}" onchange="validateChecklist()"
                                 class="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500">
                         </div>
                         <div class="ml-3 text-sm">
-                            <label for="check-item-${index}" class="font-medium text-slate-700 select-none cursor-pointer">${item.text}</label>
+                            <label for="check-item-${index}" class="font-medium text-slate-700 select-none cursor-pointer">${labelHtml}</label>
                         </div>
                     </div>
                 `;
             });
             container.innerHTML = html;
+            updateChecklistMeta();
             validateChecklist(); // Initial check
 
         } catch (e) {
@@ -2585,13 +3455,29 @@
         }
     }
 
+    function updateChecklistMeta() {
+        const sourceEl = document.getElementById('checklist-source');
+        const modeEl = document.getElementById('checklist-mode');
+
+        const sourceText = checklistSource === 'my_system' ? '来源：我的投资体系' : '来源：默认检查单';
+        const updatedText = checklistUpdatedAt ? `更新：${new Date(checklistUpdatedAt * 1000).toLocaleDateString()}` : '';
+        if (sourceEl) sourceEl.textContent = `${sourceText}${updatedText ? ' · ' + updatedText : ''}`;
+
+        const modeText = checklistMode === 'any' ? '规则：满足任一' : '规则：全部确认';
+        if (modeEl) modeEl.textContent = modeText;
+    }
+
     function validateChecklist() {
         const checkboxes = document.querySelectorAll('#checklist-items input[type="checkbox"]');
-        const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+        const requiredBoxes = Array.from(checkboxes).filter(cb => cb.dataset.required === '1');
+        const pass = checklistMode === 'any'
+            ? requiredBoxes.some(cb => cb.checked)
+            : requiredBoxes.length > 0 && requiredBoxes.every(cb => cb.checked);
         const btn = document.getElementById('btn-checklist-submit');
         const status = document.getElementById('checklist-status');
+        const recommendationEl = document.getElementById('checklist-recommendation');
 
-        if (allChecked) {
+        if (pass) {
             btn.disabled = false;
             btn.classList.remove('bg-slate-300', 'cursor-not-allowed');
             const btnColor = checklistType === 'buy' ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-red-600 hover:bg-red-700';
@@ -2606,11 +3492,60 @@
             btn.classList.add('shadow-lg');
 
             status.innerHTML = '<span class="text-green-600 font-bold flex items-center">✅ 检查通过</span>';
+            if (recommendationEl) {
+                recommendationEl.textContent = checklistType === 'buy'
+                    ? '结论：符合投资体系，可以考虑买入（按计划执行）'
+                    : '结论：符合投资体系，可以考虑卖出/减仓（按计划执行）';
+            }
         } else {
             btn.disabled = true;
             btn.classList.add('bg-slate-300', 'cursor-not-allowed');
             btn.classList.remove('bg-indigo-600', 'hover:bg-indigo-700', 'bg-red-600', 'hover:bg-red-700', 'shadow-lg');
             status.innerHTML = '<span class="text-orange-500">还有未确认的项目</span>';
+            if (recommendationEl) {
+                recommendationEl.textContent = checklistType === 'buy'
+                    ? '结论：未满足投资体系条件，暂不买入'
+                    : '结论：未满足投资体系条件，暂不卖出/减仓';
+            }
+        }
+    }
+
+    async function runChecklistAiJudge() {
+        const ticker = checklistTicker || document.getElementById('stock-ticker').textContent.trim();
+        if (!ticker || ticker === '--') {
+            alert("未识别到关联股票，请在个股分析页或持仓列表使用");
+            return;
+        }
+
+        const btn = document.getElementById('btn-checklist-ai');
+        const resultEl = document.getElementById('checklist-ai-result');
+        if (!btn || !resultEl) return;
+
+        const originalHtml = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<svg class="animate-spin -ml-0.5 mr-1.5 h-4 w-4 text-slate-700" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>判断中...';
+
+        resultEl.classList.remove('hidden');
+        resultEl.innerHTML = '<div class="text-xs text-slate-500">AI 正在结合投资体系与估值数据判断，请稍候...</div>';
+
+        try {
+            const res = await fetch('/api/portfolio/decision/system', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ticker, action: checklistType })
+            });
+            const data = await res.json();
+            if (data && data.status === 'success') {
+                const html = renderMarkdown(data.result || '');
+                resultEl.innerHTML = `<div class="markdown-content text-slate-700 text-xs leading-relaxed bg-white/60 border border-slate-200 rounded-lg p-3">${html}</div>`;
+            } else {
+                resultEl.innerHTML = `<div class="text-red-600 text-xs bg-red-50 border border-red-200 rounded-lg p-3">调用失败：${escapeHtml((data && (data.error || data.message)) || '未知错误')}</div>`;
+            }
+        } catch (e) {
+            resultEl.innerHTML = `<div class="text-red-600 text-xs bg-red-50 border border-red-200 rounded-lg p-3">请求异常：${escapeHtml(e.message)}</div>`;
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = originalHtml;
         }
     }
 
@@ -2626,7 +3561,14 @@
 
         // Create a Journal Entry
         const actionText = checklistType === 'buy' ? '买入' : '卖出';
-        const content = `**${actionText}决策检查通过**\n\n针对标的：${ticker}\n\n我已完成${actionText}前的心理建设与逻辑检查，确认符合我的投资体系。`;
+        const checkedItems = Array.from(document.querySelectorAll('#checklist-items input[type="checkbox"]'))
+            .filter(cb => cb.checked)
+            .map(cb => cb.dataset.text)
+            .filter(Boolean);
+        const checkedMd = checkedItems.length ? checkedItems.map(t => `- ${t}`).join('\n') : '- （无）';
+        const sourceText = checklistSource === 'my_system' ? '我的投资体系' : '默认检查单';
+        const modeText = checklistMode === 'any' ? '满足任一' : '全部确认';
+        const content = `**${actionText}决策（投资体系校验）**\n\n标的：${ticker}\n\n来源：${sourceText}\n规则：${modeText}\n\n已确认：\n${checkedMd}\n\n结论：符合投资体系，按计划执行。`;
 
         const body = {
             title: `${actionText}决策记录: ${ticker}`,
@@ -2634,7 +3576,7 @@
             type: 'trade',
             ticker: ticker,
             content: content,
-            tags: ['纪律执行', 'Checklist', actionText]
+            tags: ['投资体系', '决策', actionText]
         };
 
         try {
@@ -2647,7 +3589,7 @@
             const data = await res.json();
             if (data.status === 'success') {
                 closeChecklistModal();
-                alert(`🎉 ${actionText}决策已记录！请严格按计划执行。`);
+                alert(`${actionText}决策已记录！请严格按计划执行。`);
                 // loadJournalEntries(); // if we were on journal tab, but we are on analyze tab
             } else {
                 alert('保存失败: ' + data.error);
@@ -2832,7 +3774,8 @@
                 cost: h.cost,
                 group_id: h.group_id || 'default',
                 note: newNote,
-                name: h.name
+                name: h.name,
+                strategy: h.strategy || ''
             };
 
             const res = await fetch(`/api/portfolio/holdings/${h.ticker}`, {
@@ -2859,8 +3802,71 @@
         }
     }
 
+    // --- Strategy Modal Logic ---
+    function openStrategyModal(ticker) {
+        const h = window.portfolioHoldings ? window.portfolioHoldings[ticker] : null;
+        if (!h) return;
+        currentStrategyTicker = ticker;
+        const modal = document.getElementById('strategy-modal');
+        const title = document.getElementById('strategy-modal-title');
+        const subtitle = document.getElementById('strategy-modal-subtitle');
+        const textarea = document.getElementById('strategy-modal-content');
+        title.textContent = `操作策略：${h.name || ticker}`;
+        subtitle.textContent = `代码: ${h.ticker} | 成本: ${h.cost} | 持仓: ${h.shares}`;
+        textarea.value = h.strategy || '';
+        modal.classList.remove('hidden');
+        textarea.focus();
+    }
+
+    function closeStrategyModal() {
+        document.getElementById('strategy-modal').classList.add('hidden');
+        currentStrategyTicker = null;
+    }
+
+    async function saveStrategy() {
+        if (!currentStrategyTicker) return;
+        const h = window.portfolioHoldings ? window.portfolioHoldings[currentStrategyTicker] : null;
+        if (!h) return;
+
+        const btn = document.querySelector('#strategy-modal button[onclick="saveStrategy()"]');
+        const originalText = btn.textContent;
+        const newStrategy = document.getElementById('strategy-modal-content').value;
+        btn.disabled = true;
+        btn.textContent = '保存中...';
+        try {
+            const body = {
+                ticker: h.ticker,
+                shares: h.shares,
+                cost: h.cost,
+                group_id: h.group_id || 'default',
+                note: h.note || '',
+                name: h.name,
+                strategy: newStrategy
+            };
+            const res = await fetch(`/api/portfolio/holdings/${h.ticker}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+            if (res.ok) {
+                h.strategy = newStrategy;
+                loadHoldings();
+                closeStrategyModal();
+            } else {
+                alert('保存失败');
+            }
+        } catch (e) {
+            console.error(e);
+            alert('请求失败');
+        } finally {
+            btn.disabled = false;
+            btn.textContent = originalText;
+        }
+    }
+
     // Initial load
     window.onload = () => {
+        loadValuationCategories();
         analyzeStock('600036.SS');
     }
 
@@ -2959,20 +3965,12 @@
 
     function renderAiContent(markdown) {
         const contentDiv = document.getElementById('ai-analysis-content');
-        if (typeof marked !== 'undefined') {
-            contentDiv.innerHTML = marked.parse(markdown);
-        } else {
-            contentDiv.innerText = markdown;
-        }
+        contentDiv.innerHTML = renderMarkdown(markdown);
     }
 
     function renderDecisionContent(markdown) {
         const contentDiv = document.getElementById('decision-result');
-        if (typeof marked !== 'undefined') {
-            contentDiv.innerHTML = marked.parse(markdown);
-        } else {
-            contentDiv.innerText = markdown;
-        }
+        contentDiv.innerHTML = renderMarkdown(markdown);
     }
 
     async function verifyCompanyQuality(force = false) {
@@ -3032,11 +4030,7 @@
                     </div>`;
                 }
 
-                if (typeof marked !== 'undefined') {
-                    htmlContent += marked.parse(data.result);
-                } else {
-                    htmlContent += data.result;
-                }
+                htmlContent += renderMarkdown(data.result);
                 content.innerHTML = htmlContent;
             }
         } catch (e) {
